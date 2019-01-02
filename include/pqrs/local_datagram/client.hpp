@@ -29,7 +29,7 @@ public:
                                                          path_(path),
                                                          server_check_interval_(server_check_interval),
                                                          reconnect_interval_(reconnect_interval),
-                                                         reconnect_enabled_(false) {
+                                                         reconnect_timer_(*this) {
   }
 
   virtual ~client(void) {
@@ -40,8 +40,6 @@ public:
 
   void async_start(void) {
     enqueue_to_dispatcher([this] {
-      reconnect_enabled_ = true;
-
       connect();
     });
   }
@@ -72,8 +70,8 @@ public:
 
 private:
   void stop(void) {
-    // We have to unset reconnect_enabled_ before `close` to prevent `enqueue_reconnect` by `closed` signal.
-    reconnect_enabled_ = false;
+    // We have to unset reconnect_interval_ before `close` to prevent `start_reconnect_timer` by `closed` signal.
+    reconnect_interval_ = std::nullopt;
 
     close();
   }
@@ -97,7 +95,7 @@ private:
       });
 
       close();
-      enqueue_reconnect();
+      start_reconnect_timer();
     });
 
     impl_client_->closed.connect([this] {
@@ -106,7 +104,7 @@ private:
       });
 
       close();
-      enqueue_reconnect();
+      start_reconnect_timer();
     });
 
     impl_client_->async_connect(path_,
@@ -121,25 +119,27 @@ private:
     impl_client_ = nullptr;
   }
 
-  void enqueue_reconnect(void) {
-    enqueue_to_dispatcher(
-        [this] {
-          if (!reconnect_enabled_) {
-            return;
-          }
-
-          connect();
-        },
-        when_now() + reconnect_interval_);
+  void start_reconnect_timer(void) {
+    if (reconnect_interval_) {
+      enqueue_to_dispatcher(
+          [this] {
+            reconnect_timer_.start(
+                [this] {
+                  connect();
+                },
+                *reconnect_interval_);
+          },
+          when_now() + *reconnect_interval_);
+    } else {
+      reconnect_timer_.stop();
+    }
   }
 
   std::string path_;
   std::optional<std::chrono::milliseconds> server_check_interval_;
-  std::chrono::milliseconds reconnect_interval_;
-
+  std::optional<std::chrono::milliseconds> reconnect_interval_;
   std::shared_ptr<impl::client> impl_client_;
-
-  bool reconnect_enabled_;
+  dispatcher::extra::timer reconnect_timer_;
 };
 } // namespace local_datagram
 } // namespace pqrs
