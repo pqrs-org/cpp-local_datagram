@@ -32,14 +32,11 @@ TEST_CASE("fail to create socket file") {
   auto dispatcher = std::make_shared<pqrs::dispatcher::dispatcher>(time_source);
 
   size_t server_buffer_size(32 * 1024);
-  std::chrono::milliseconds server_check_interval(100);
-  std::chrono::milliseconds reconnect_interval(100);
-
   auto server = std::make_unique<pqrs::local_datagram::server>(dispatcher,
                                                                "not_found/server.sock",
-                                                               server_buffer_size,
-                                                               server_check_interval,
-                                                               reconnect_interval);
+                                                               server_buffer_size);
+  server->set_server_check_interval(std::chrono::milliseconds(100));
+  server->set_reconnect_interval(std::chrono::milliseconds(100));
 
   auto wait = pqrs::make_thread_wait();
   bool failed = false;
@@ -76,14 +73,11 @@ TEST_CASE("keep existing file in destructor") {
 
   {
     size_t server_buffer_size(32 * 1024);
-    std::chrono::milliseconds server_check_interval(100);
-    std::chrono::milliseconds reconnect_interval(100);
-
     auto server = std::make_unique<pqrs::local_datagram::server>(dispatcher,
                                                                  regular_file_path,
-                                                                 server_buffer_size,
-                                                                 server_check_interval,
-                                                                 reconnect_interval);
+                                                                 server_buffer_size);
+    server->set_server_check_interval(std::chrono::milliseconds(100));
+    server->set_reconnect_interval(std::chrono::milliseconds(100));
 
     auto wait = pqrs::make_thread_wait();
     bool failed = false;
@@ -275,13 +269,11 @@ TEST_CASE("local_datagram::server reconnect") {
     size_t bind_failed_count = 0;
     size_t closed_count = 0;
 
-    std::chrono::milliseconds reconnect_interval(100);
-
     auto server = std::make_unique<pqrs::local_datagram::server>(dispatcher,
                                                                  socket_path,
-                                                                 server_buffer_size,
-                                                                 server_check_interval,
-                                                                 reconnect_interval);
+                                                                 server_buffer_size);
+    server->set_server_check_interval(std::chrono::milliseconds(100));
+    server->set_reconnect_interval(std::chrono::milliseconds(100));
 
     server->bound.connect([&] {
       std::cout << "server bound: " << bound_count << std::endl;

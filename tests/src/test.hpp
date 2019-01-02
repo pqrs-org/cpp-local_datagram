@@ -12,19 +12,15 @@ public:
   test_server(std::weak_ptr<pqrs::dispatcher::dispatcher> weak_dispatcher,
               std::optional<std::chrono::milliseconds> reconnect_interval) : closed_(false),
                                                                              received_count_(0) {
-    if (!reconnect_interval) {
-      reconnect_interval = std::chrono::milliseconds(1000 * 1000);
-    }
-
     auto wait = pqrs::make_thread_wait();
 
     unlink(socket_path.c_str());
 
     server_ = std::make_unique<pqrs::local_datagram::server>(weak_dispatcher,
                                                              socket_path,
-                                                             server_buffer_size,
-                                                             server_check_interval,
-                                                             *reconnect_interval);
+                                                             server_buffer_size);
+    server_->set_server_check_interval(server_check_interval);
+    server_->set_reconnect_interval(reconnect_interval);
 
     server_->bound.connect([this, wait] {
       std::cout << "server bound" << std::endl;
@@ -94,16 +90,12 @@ class test_client final {
 public:
   test_client(std::weak_ptr<pqrs::dispatcher::dispatcher> weak_dispatcher,
               std::optional<std::chrono::milliseconds> reconnect_interval) : closed_(false) {
-    if (!reconnect_interval) {
-      reconnect_interval = std::chrono::milliseconds(1000 * 1000);
-    }
-
     auto wait = pqrs::make_thread_wait();
 
     client_ = std::make_unique<pqrs::local_datagram::client>(weak_dispatcher,
-                                                             socket_path,
-                                                             server_check_interval,
-                                                             *reconnect_interval);
+                                                             socket_path);
+    client_->set_server_check_interval(server_check_interval);
+    client_->set_reconnect_interval(reconnect_interval);
 
     client_->connected.connect([this, wait] {
       connected_ = true;

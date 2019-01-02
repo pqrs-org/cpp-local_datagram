@@ -15,17 +15,15 @@ int main(void) {
   auto dispatcher = std::make_shared<pqrs::dispatcher::dispatcher>(time_source);
 
   std::string socket_file_path("tmp/server.sock");
-  size_t buffer_size = 32 * 1024;
-  std::chrono::milliseconds server_check_interval(3000);
-  std::chrono::milliseconds reconnect_interval(1000);
 
   // server
-
+  size_t buffer_size = 32 * 1024;
   auto server = std::make_shared<pqrs::local_datagram::server>(dispatcher,
                                                                socket_file_path,
-                                                               buffer_size,
-                                                               server_check_interval,
-                                                               reconnect_interval);
+                                                               buffer_size);
+  server->set_server_check_interval(std::chrono::milliseconds(3000));
+  server->set_reconnect_interval(std::chrono::milliseconds(1000));
+
   server->bound.connect([] {
     std::cout << "server bound" << std::endl;
   });
@@ -46,14 +44,16 @@ int main(void) {
       std::cout << std::endl;
     }
   });
+
   server->async_start();
 
   // client
 
   auto client = std::make_shared<pqrs::local_datagram::client>(dispatcher,
-                                                               socket_file_path,
-                                                               server_check_interval,
-                                                               reconnect_interval);
+                                                               socket_file_path);
+  client->set_server_check_interval(std::chrono::milliseconds(3000));
+  client->set_reconnect_interval(std::chrono::milliseconds(1000));
+
   client->connected.connect([&client] {
     std::cout << "client connected" << std::endl;
 
@@ -71,6 +71,7 @@ int main(void) {
   client->closed.connect([] {
     std::cout << "client closed" << std::endl;
   });
+
   client->async_start();
 
   // ============================================================

@@ -14,12 +14,10 @@ TEST_CASE("local_datagram::client") {
     size_t connect_failed_count = 0;
     size_t closed_count = 0;
 
-    std::chrono::milliseconds reconnect_interval(100);
-
     auto client = std::make_unique<pqrs::local_datagram::client>(dispatcher,
-                                                                 socket_path,
-                                                                 server_check_interval,
-                                                                 reconnect_interval);
+                                                                 socket_path);
+    client->set_server_check_interval(server_check_interval);
+    client->set_reconnect_interval(std::chrono::milliseconds(100));
 
     client->connected.connect([&] {
       std::cout << "client connected: " << connected_count << std::endl;

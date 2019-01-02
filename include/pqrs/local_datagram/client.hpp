@@ -23,19 +23,25 @@ public:
   // Methods
 
   client(std::weak_ptr<dispatcher::dispatcher> weak_dispatcher,
-         const std::string& path,
-         std::optional<std::chrono::milliseconds> server_check_interval,
-         std::chrono::milliseconds reconnect_interval) : dispatcher_client(weak_dispatcher),
-                                                         path_(path),
-                                                         server_check_interval_(server_check_interval),
-                                                         reconnect_interval_(reconnect_interval),
-                                                         reconnect_timer_(*this) {
+         const std::string& path) : dispatcher_client(weak_dispatcher),
+                                    path_(path),
+                                    reconnect_timer_(*this) {
   }
 
   virtual ~client(void) {
     detach_from_dispatcher([this] {
       stop();
     });
+  }
+
+  // You have to call `set_server_check_interval` before `async_start`.
+  void set_server_check_interval(std::optional<std::chrono::milliseconds> value) {
+    server_check_interval_ = value;
+  }
+
+  // You have to call `set_reconnect_interval` before `async_start`.
+  void set_reconnect_interval(std::optional<std::chrono::milliseconds> value) {
+    reconnect_interval_ = value;
   }
 
   void async_start(void) {
