@@ -1,0 +1,5 @@
+catchorg/Catch2@v2.4.2
+chriskohlhoff/asio@asio-1-12-2 --cmake header -DINCLUDE_DIR=asio/include
+fr00b0/nod@v0.5.0 --cmake header
+pqrs-org/cpp-dispatcher
+pqrs-org/cpp-filesystem
