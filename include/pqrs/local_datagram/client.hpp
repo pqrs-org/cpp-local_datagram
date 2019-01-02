@@ -69,6 +69,7 @@ public:
   }
 
 private:
+  // This method is executed in the dispatcher thread.
   void stop(void) {
     // We have to unset reconnect_interval_ before `close` to prevent `start_reconnect_timer` by `closed` signal.
     reconnect_interval_ = std::nullopt;
@@ -76,6 +77,7 @@ private:
     close();
   }
 
+  // This method is executed in the dispatcher thread.
   void connect(void) {
     if (impl_client_) {
       return;
@@ -111,6 +113,7 @@ private:
                                 server_check_interval_);
   }
 
+  // This method is executed in the dispatcher thread.
   void close(void) {
     if (!impl_client_) {
       return;
@@ -119,12 +122,17 @@ private:
     impl_client_ = nullptr;
   }
 
+  // This method is executed in the dispatcher thread.
   void start_reconnect_timer(void) {
     if (reconnect_interval_) {
       enqueue_to_dispatcher(
           [this] {
             reconnect_timer_.start(
                 [this] {
+                  if (!reconnect_interval_) {
+                    reconnect_timer_.stop();
+                  }
+
                   connect();
                 },
                 *reconnect_interval_);
