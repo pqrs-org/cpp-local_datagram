@@ -128,6 +128,8 @@ public:
   }
 
   ~test_client(void) {
+    std::cout << "~test_client" << std::endl;
+
     client_ = nullptr;
   }
 
