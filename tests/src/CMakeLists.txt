@@ -13,6 +13,7 @@ project (test)
 
 add_executable(
   test
+  asio_test.cpp
   client_test.cpp
   server_test.cpp
   test.cpp
