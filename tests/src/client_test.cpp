@@ -46,44 +46,55 @@ TEST_CASE("local_datagram::client") {
 
     client->async_start();
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    for (int i = 0; i < 10; ++i) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-    REQUIRE(connected_count == 0);
-    REQUIRE(connect_failed_count > 2);
-    REQUIRE(closed_count == 0);
-    REQUIRE(last_error_message == "");
+      REQUIRE(connected_count == i);
+      REQUIRE(connect_failed_count > 2);
+      REQUIRE(closed_count == i);
+      REQUIRE(last_error_message == "");
 
-    // Create server
+      // Create server
 
-    auto server = std::make_unique<test_server>(dispatcher,
-                                                std::nullopt);
+      auto server = std::make_unique<test_server>(dispatcher,
+                                                  std::nullopt);
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-    REQUIRE(connected_count == 1);
-    REQUIRE(last_error_message == "");
+      REQUIRE(connected_count == i + 1);
+      REQUIRE(last_error_message == "");
 
-    // Shtudown servr
+      auto previous_received_count = server->get_received_count();
 
-    connect_failed_count = 0;
+      std::vector<uint8_t> buffer(1024);
+      int loop_count = 20;
+      for (int j = 0; j < loop_count; ++j) {
+        client->async_send(buffer);
+      }
 
-    server = nullptr;
+      while (server->get_received_count() < previous_received_count + buffer.size() * loop_count) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+      REQUIRE(last_error_message == "");
 
-    REQUIRE(connected_count == 1);
-    REQUIRE(connect_failed_count > 2);
-    REQUIRE(closed_count == 1);
-    REQUIRE(last_error_message == "Connection reset by peer");
+      // Shtudown servr
 
-    // Recreate server
+      connect_failed_count = 0;
 
-    server = std::make_unique<test_server>(dispatcher,
-                                           std::nullopt);
+      server = nullptr;
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-    REQUIRE(connected_count == 2);
+      REQUIRE(connected_count == i + 1);
+      REQUIRE(connect_failed_count > 2);
+      REQUIRE(closed_count == i + 1);
+      REQUIRE(last_error_message == "Connection reset by peer");
+      last_error_message = "";
+
+      connect_failed_count = 0;
+      last_error_message = "";
+    }
   }
 
   dispatcher->terminate();
