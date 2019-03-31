@@ -13,6 +13,7 @@ TEST_CASE("local_datagram::client") {
     size_t connected_count = 0;
     size_t connect_failed_count = 0;
     size_t closed_count = 0;
+    std::string last_error_message;
 
     auto client = std::make_unique<pqrs::local_datagram::client>(dispatcher,
                                                                  socket_path);
@@ -37,6 +38,10 @@ TEST_CASE("local_datagram::client") {
       ++closed_count;
     });
 
+    client->error_occurred.connect([&](auto&& error_code) {
+      last_error_message = error_code.message();
+    });
+
     // Create client before server
 
     client->async_start();
@@ -46,6 +51,7 @@ TEST_CASE("local_datagram::client") {
     REQUIRE(connected_count == 0);
     REQUIRE(connect_failed_count > 2);
     REQUIRE(closed_count == 0);
+    REQUIRE(last_error_message == "");
 
     // Create server
 
@@ -55,6 +61,7 @@ TEST_CASE("local_datagram::client") {
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
     REQUIRE(connected_count == 1);
+    REQUIRE(last_error_message == "");
 
     // Shtudown servr
 
@@ -67,6 +74,7 @@ TEST_CASE("local_datagram::client") {
     REQUIRE(connected_count == 1);
     REQUIRE(connect_failed_count > 2);
     REQUIRE(closed_count == 1);
+    REQUIRE(last_error_message == "Connection reset by peer");
 
     // Recreate server
 
