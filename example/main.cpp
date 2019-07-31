@@ -28,7 +28,7 @@ int main(void) {
     std::cout << "server bound" << std::endl;
   });
   server->bind_failed.connect([](auto&& error_code) {
-    std::cout << "server bind_failed" << std::endl;
+    std::cout << "server bind_failed:" << error_code.message() << std::endl;
   });
   server->closed.connect([] {
     std::cout << "server closed" << std::endl;
@@ -66,10 +66,13 @@ int main(void) {
     client->async_send(buffer);
   });
   client->connect_failed.connect([](auto&& error_code) {
-    std::cout << "client connect_failed" << std::endl;
+    std::cout << "client connect_failed:" << error_code.message() << std::endl;
   });
   client->closed.connect([] {
     std::cout << "client closed" << std::endl;
+  });
+  client->error_occurred.connect([](auto&& error_code) {
+    std::cout << "client error_occurred:" << error_code.message() << std::endl;
   });
 
   client->async_start();
