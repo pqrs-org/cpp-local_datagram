@@ -15,6 +15,7 @@ int main(void) {
   auto dispatcher = std::make_shared<pqrs::dispatcher::dispatcher>(time_source);
 
   std::string socket_file_path("tmp/server.sock");
+  unlink(socket_file_path.c_str());
 
   // server
   size_t buffer_size = 32 * 1024;
@@ -76,6 +77,17 @@ int main(void) {
   });
 
   client->async_start();
+  {
+    std::vector<uint8_t> buffer;
+    buffer.push_back('1');
+    client->async_send(buffer);
+  }
+  {
+    std::vector<uint8_t> buffer;
+    buffer.push_back('1');
+    buffer.push_back('2');
+    client->async_send(buffer);
+  }
 
   // ============================================================
 
