@@ -49,9 +49,9 @@ TEST_CASE("local_datagram::client") {
     for (int i = 0; i < 10; ++i) {
       std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-      REQUIRE(connected_count == i);
+      REQUIRE(connected_count == i * 2);
       REQUIRE(connect_failed_count > 2);
-      REQUIRE(closed_count == i);
+      REQUIRE(closed_count == i * 2);
       REQUIRE(last_error_message == "");
 
       // Create server
@@ -61,7 +61,7 @@ TEST_CASE("local_datagram::client") {
 
       std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-      REQUIRE(connected_count == i + 1);
+      REQUIRE(connected_count == i * 2 + 1);
       REQUIRE(last_error_message == "");
 
       auto previous_received_count = server->get_received_count();
@@ -78,7 +78,7 @@ TEST_CASE("local_datagram::client") {
 
       REQUIRE(last_error_message == "");
 
-      // Shtudown servr
+      // Shutdown servr
 
       connect_failed_count = 0;
 
@@ -86,13 +86,32 @@ TEST_CASE("local_datagram::client") {
 
       std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-      REQUIRE(connected_count == i + 1);
+      REQUIRE(connected_count == i * 2 + 1);
       REQUIRE(connect_failed_count > 2);
-      REQUIRE(closed_count == i + 1);
+      REQUIRE(closed_count == i * 2 + 1);
       // last_error_message == "Connection reset by peer" ||
       // last_error_message == "Socket is not connected"
       REQUIRE(last_error_message != "");
       last_error_message = "";
+
+      // Send data while server is down (data will be sent after reconnection.)
+
+      client->async_send(buffer);
+
+      // Recreate server
+
+      server = std::make_unique<test_server>(dispatcher,
+                                             std::nullopt);
+
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+      REQUIRE(server->get_received_count() == buffer.size());
+
+      // Shutdown server
+
+      server = nullptr;
+
+      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
       connect_failed_count = 0;
       last_error_message = "";
