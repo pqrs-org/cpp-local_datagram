@@ -39,8 +39,14 @@ int main(void) {
 
     if (!buffer->empty()) {
       std::cout << "buffer: ";
+      int count = 0;
       for (const auto& c : *buffer) {
         std::cout << c;
+        ++count;
+        if (count > 40) {
+          std::cout << "... (" << buffer->size() << "bytes)";
+          break;
+        }
       }
       std::cout << std::endl;
     }
@@ -51,7 +57,8 @@ int main(void) {
   // client
 
   auto client = std::make_shared<pqrs::local_datagram::client>(dispatcher,
-                                                               socket_file_path);
+                                                               socket_file_path,
+                                                               buffer_size);
   client->set_server_check_interval(std::chrono::milliseconds(3000));
   client->set_reconnect_interval(std::chrono::milliseconds(1000));
 
@@ -86,6 +93,14 @@ int main(void) {
     std::vector<uint8_t> buffer;
     buffer.push_back('1');
     buffer.push_back('2');
+    client->async_send(buffer);
+  }
+  {
+    std::vector<uint8_t> buffer(30 * 1024, '9');
+    client->async_send(buffer);
+  }
+  {
+    std::vector<uint8_t> buffer(buffer_size, '9');
     client->async_send(buffer);
   }
 

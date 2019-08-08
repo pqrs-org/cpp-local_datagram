@@ -93,7 +93,8 @@ public:
     auto wait = pqrs::make_thread_wait();
 
     client_ = std::make_unique<pqrs::local_datagram::client>(weak_dispatcher,
-                                                             socket_path);
+                                                             socket_path,
+                                                             server_buffer_size);
     client_->set_server_check_interval(server_check_interval);
     client_->set_reconnect_interval(reconnect_interval);
 

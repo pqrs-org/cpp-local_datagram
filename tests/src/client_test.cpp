@@ -16,7 +16,8 @@ TEST_CASE("local_datagram::client") {
     std::string last_error_message;
 
     auto client = std::make_unique<pqrs::local_datagram::client>(dispatcher,
-                                                                 socket_path);
+                                                                 socket_path,
+                                                                 server_buffer_size);
     client->set_server_check_interval(server_check_interval);
     client->set_reconnect_interval(std::chrono::milliseconds(100));
 
