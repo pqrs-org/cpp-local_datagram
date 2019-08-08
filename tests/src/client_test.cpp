@@ -122,3 +122,58 @@ TEST_CASE("local_datagram::client") {
   dispatcher->terminate();
   dispatcher = nullptr;
 }
+
+TEST_CASE("local_datagram::client large_buffer") {
+  std::cout << "TEST_CASE(local_datagram::client large_buffer)" << std::endl;
+
+  auto time_source = std::make_shared<pqrs::dispatcher::hardware_time_source>();
+  auto dispatcher = std::make_shared<pqrs::dispatcher::dispatcher>(time_source);
+
+  {
+    auto server = std::make_unique<test_server>(dispatcher,
+                                                std::nullopt);
+
+    std::string last_error_message;
+
+    auto client = std::make_unique<pqrs::local_datagram::client>(dispatcher,
+                                                                 socket_path,
+                                                                 server_buffer_size);
+
+    client->error_occurred.connect([&](auto&& error_code) {
+      last_error_message = error_code.message();
+    });
+
+    client->async_start();
+
+    //
+    // buffer.size() == server_buffer_size
+    //
+
+    {
+      std::vector<uint8_t> buffer(server_buffer_size, '1');
+      client->async_send(buffer);
+
+      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+      REQUIRE(server->get_received_count() == server_buffer_size);
+      REQUIRE(last_error_message == "");
+    }
+
+    //
+    // buffer.size() > server_buffer_size
+    //
+
+    {
+      std::vector<uint8_t> buffer(server_buffer_size + 1, '2');
+      client->async_send(buffer);
+
+      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+      REQUIRE(server->get_received_count() == server_buffer_size);
+      REQUIRE(last_error_message == "Message too long");
+    }
+  }
+
+  dispatcher->terminate();
+  dispatcher = nullptr;
+}
