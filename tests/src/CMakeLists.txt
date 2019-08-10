@@ -19,3 +19,8 @@ add_executable(
   server_test.cpp
   test.cpp
 )
+
+target_link_libraries(
+  test
+  pthread
+)
