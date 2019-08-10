@@ -56,7 +56,7 @@ int main(void) {
 
   // client
 
-  size_t client_buffer_size = 32 * 1024;
+  size_t client_buffer_size = 64 * 1024;
   auto client = std::make_shared<pqrs::local_datagram::client>(dispatcher,
                                                                socket_file_path,
                                                                client_buffer_size);
@@ -97,11 +97,11 @@ int main(void) {
     client->async_send(buffer);
   }
   {
-    std::vector<uint8_t> buffer(30 * 1024, '9');
+    std::vector<uint8_t> buffer(30 * 1024, '3');
     client->async_send(buffer);
   }
   {
-    std::vector<uint8_t> buffer(client_buffer_size, '9');
+    std::vector<uint8_t> buffer(client_buffer_size, '4');
     client->async_send(buffer);
   }
 
