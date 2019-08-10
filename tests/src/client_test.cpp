@@ -169,8 +169,69 @@ TEST_CASE("local_datagram::client large_buffer") {
 
       std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
+      if (server->get_received_count() > server_buffer_size) {
+        // Linux
+        REQUIRE(server->get_received_count() == server_buffer_size * 2);
+        REQUIRE(last_error_message == "");
+      } else {
+        // macOS
+        REQUIRE(server->get_received_count() == server_buffer_size);
+        REQUIRE(last_error_message == "Message too long");
+      }
+    }
+  }
+
+  // client_buffer_size > server_buffer_size
+  {
+    auto server = std::make_unique<test_server>(dispatcher,
+                                                std::nullopt);
+
+    std::string last_error_message;
+
+    size_t client_buffer_size = server_buffer_size + 32;
+    auto client = std::make_unique<pqrs::local_datagram::client>(dispatcher,
+                                                                 socket_path,
+                                                                 client_buffer_size);
+
+    client->error_occurred.connect([&](auto&& error_code) {
+      last_error_message = error_code.message();
+    });
+
+    client->async_start();
+
+    //
+    // buffer.size() == server_buffer_size
+    //
+
+    {
+      std::vector<uint8_t> buffer(server_buffer_size, '1');
+      client->async_send(buffer);
+
+      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
       REQUIRE(server->get_received_count() == server_buffer_size);
-      REQUIRE(last_error_message == "Message too long");
+      REQUIRE(last_error_message == "");
+    }
+
+    //
+    // buffer.size() == client_buffer_size
+    //
+
+    {
+      std::vector<uint8_t> buffer(client_buffer_size, '2');
+      client->async_send(buffer);
+
+      std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+
+      if (server->get_received_count() > server_buffer_size) {
+        // Linux
+        REQUIRE(server->get_received_count() == server_buffer_size * 2);
+        REQUIRE(last_error_message == "");
+      } else {
+        // macOS
+        REQUIRE(server->get_received_count() == server_buffer_size);
+        REQUIRE(last_error_message == "No buffer space available");
+      }
     }
   }
 
