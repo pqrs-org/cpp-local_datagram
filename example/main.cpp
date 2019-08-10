@@ -18,10 +18,10 @@ int main(void) {
   unlink(socket_file_path.c_str());
 
   // server
-  size_t buffer_size = 32 * 1024;
+  size_t server_buffer_size = 32 * 1024;
   auto server = std::make_shared<pqrs::local_datagram::server>(dispatcher,
                                                                socket_file_path,
-                                                               buffer_size);
+                                                               server_buffer_size);
   server->set_server_check_interval(std::chrono::milliseconds(3000));
   server->set_reconnect_interval(std::chrono::milliseconds(1000));
 
@@ -56,9 +56,10 @@ int main(void) {
 
   // client
 
+  size_t client_buffer_size = 32 * 1024;
   auto client = std::make_shared<pqrs::local_datagram::client>(dispatcher,
                                                                socket_file_path,
-                                                               buffer_size);
+                                                               client_buffer_size);
   client->set_server_check_interval(std::chrono::milliseconds(3000));
   client->set_reconnect_interval(std::chrono::milliseconds(1000));
 
@@ -100,7 +101,7 @@ int main(void) {
     client->async_send(buffer);
   }
   {
-    std::vector<uint8_t> buffer(buffer_size, '9');
+    std::vector<uint8_t> buffer(client_buffer_size, '9');
     client->async_send(buffer);
   }
 
