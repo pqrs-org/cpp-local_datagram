@@ -38,7 +38,7 @@ int main(void) {
     std::cout << "server received size:" << buffer->size() << std::endl;
 
     if (!buffer->empty()) {
-      std::cout << "buffer: ";
+      std::cout << "buffer: `";
       int count = 0;
       for (const auto& c : *buffer) {
         std::cout << c;
@@ -48,6 +48,7 @@ int main(void) {
           break;
         }
       }
+      std::cout << "`";
       std::cout << std::endl;
     }
   });
@@ -66,12 +67,8 @@ int main(void) {
   client->connected.connect([&client] {
     std::cout << "client connected" << std::endl;
 
-    std::vector<uint8_t> buffer;
-    buffer.push_back('h');
-    buffer.push_back('e');
-    buffer.push_back('l');
-    buffer.push_back('l');
-    buffer.push_back('o');
+    std::string s = "Type control-c to quit.";
+    std::vector<uint8_t> buffer(std::begin(s), std::end(s));
     client->async_send(buffer);
   });
   client->connect_failed.connect([](auto&& error_code) {

@@ -164,14 +164,15 @@ TEST_CASE("local_datagram::client large_buffer") {
     //
 
     {
-      std::vector<uint8_t> buffer(server_buffer_size + 1, '2');
+      std::vector<uint8_t> buffer(server_buffer_size + 64, '2');
       client->async_send(buffer);
 
       std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
       if (server->get_received_count() > server_buffer_size) {
         // Linux
-        REQUIRE(server->get_received_count() == server_buffer_size * 2);
+        // (31 is server buffer_margin - buffer::type)
+        REQUIRE(server->get_received_count() == server_buffer_size * 2 + 31);
         REQUIRE(last_error_message == "");
       } else {
         // macOS
@@ -225,7 +226,8 @@ TEST_CASE("local_datagram::client large_buffer") {
 
       if (server->get_received_count() > server_buffer_size) {
         // Linux
-        REQUIRE(server->get_received_count() == server_buffer_size * 2);
+        // (31 is server buffer_margin - buffer::type)
+        REQUIRE(server->get_received_count() == server_buffer_size * 2 + 31);
         REQUIRE(last_error_message == "");
       } else {
         // macOS
