@@ -69,7 +69,8 @@ int main(void) {
 
     std::string s = "Type control-c to quit.";
     std::vector<uint8_t> buffer(std::begin(s), std::end(s));
-    client->async_send(buffer);
+    auto request_id = client->async_send(buffer);
+    std::cout << "request_id:" << request_id << std::endl;
   });
   client->connect_failed.connect([](auto&& error_code) {
     std::cout << "client connect_failed:" << error_code.message() << std::endl;
@@ -80,26 +81,33 @@ int main(void) {
   client->error_occurred.connect([](auto&& error_code) {
     std::cout << "client error_occurred:" << error_code.message() << std::endl;
   });
+  client->processed.connect([](auto&& request_id) {
+    std::cout << "client processed:" << request_id << std::endl;
+  });
 
   client->async_start();
   {
     std::vector<uint8_t> buffer;
     buffer.push_back('1');
-    client->async_send(buffer);
+    auto request_id = client->async_send(buffer);
+    std::cout << "request_id:" << request_id << std::endl;
   }
   {
     std::vector<uint8_t> buffer;
     buffer.push_back('1');
     buffer.push_back('2');
-    client->async_send(buffer);
+    auto request_id = client->async_send(buffer);
+    std::cout << "request_id:" << request_id << std::endl;
   }
   {
     std::vector<uint8_t> buffer(30 * 1024, '3');
-    client->async_send(buffer);
+    auto request_id = client->async_send(buffer);
+    std::cout << "request_id:" << request_id << std::endl;
   }
   {
     std::vector<uint8_t> buffer(client_buffer_size, '4');
-    client->async_send(buffer);
+    auto request_id = client->async_send(buffer);
+    std::cout << "request_id:" << request_id << std::endl;
   }
 
   // ============================================================
