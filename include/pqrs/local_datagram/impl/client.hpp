@@ -108,6 +108,9 @@ public:
                                  enqueue_to_dispatcher([this] {
                                    connected();
                                  });
+
+                                 // Flush send_buffers_.
+                                 send();
                                }
                              });
     });
@@ -183,9 +186,6 @@ private:
       }
 
       if (!connected_) {
-        // Retry until connected.
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        send();
         return;
       }
 
