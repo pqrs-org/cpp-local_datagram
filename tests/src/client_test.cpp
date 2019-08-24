@@ -171,7 +171,7 @@ TEST_CASE("local_datagram::client large_buffer") {
 
       if (server->get_received_count() > server_buffer_size) {
         // Linux
-        // (31 is server buffer_margin - buffer::type)
+        // (31 is server buffer_margin - buffer::client_send_entry)
         REQUIRE(server->get_received_count() == server_buffer_size * 2 + 31);
         REQUIRE(last_error_message == "");
       } else {
@@ -226,7 +226,7 @@ TEST_CASE("local_datagram::client large_buffer") {
 
       if (server->get_received_count() > server_buffer_size) {
         // Linux
-        // (31 is server buffer_margin - buffer::type)
+        // (31 is server buffer_margin - buffer::client_send_entry)
         REQUIRE(server->get_received_count() == server_buffer_size * 2 + 31);
         REQUIRE(last_error_message == "");
       } else {

@@ -100,9 +100,9 @@ public:
   request_id async_send(const std::vector<uint8_t>& v,
                         const std::function<void(void)>& processed = nullptr) {
     auto request_id = make_request_id();
-    auto ptr = std::make_shared<impl::buffer>(impl::buffer::type::user_data,
-                                              request_id,
-                                              v);
+    auto ptr = std::make_shared<impl::client_send_entry>(impl::client_send_entry::type::user_data,
+                                                         request_id,
+                                                         v);
 
     async_send(ptr, processed);
 
@@ -113,10 +113,10 @@ public:
                         size_t length,
                         const std::function<void(void)>& processed = nullptr) {
     auto request_id = make_request_id();
-    auto ptr = std::make_shared<impl::buffer>(impl::buffer::type::user_data,
-                                              request_id,
-                                              p,
-                                              length);
+    auto ptr = std::make_shared<impl::client_send_entry>(impl::client_send_entry::type::user_data,
+                                                         request_id,
+                                                         p,
+                                                         length);
 
     async_send(ptr, processed);
 
@@ -173,16 +173,16 @@ private:
     return ++last_request_id_;
   }
 
-  void async_send(std::shared_ptr<impl::buffer> buffer,
+  void async_send(std::shared_ptr<impl::client_send_entry> entry,
                   const std::function<void(void)>& processed) {
-    enqueue_to_dispatcher([this, buffer, processed] {
+    enqueue_to_dispatcher([this, entry, processed] {
       if (impl_client_) {
         //
         // Prepare `processed`
         //
 
         if (processed) {
-          if (auto id = buffer->get_request_id()) {
+          if (auto id = entry->get_request_id()) {
             processed_connections_[*id] = impl_client_->processed.connect([this, processed, id](auto&& request_id) {
               if (*id == request_id) {
                 enqueue_to_dispatcher([processed] {
@@ -199,7 +199,7 @@ private:
         // async_send
         //
 
-        impl_client_->async_send(buffer);
+        impl_client_->async_send(entry);
       } else {
         //
         // Call `processed`
