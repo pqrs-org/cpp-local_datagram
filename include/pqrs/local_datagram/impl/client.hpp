@@ -32,6 +32,7 @@ public:
   nod::signal<void(const asio::error_code&)> connect_failed;
   nod::signal<void(void)> closed;
   nod::signal<void(const asio::error_code&)> error_occurred;
+  // Only in impl::client
   nod::signal<void(request_id)> processed;
 
   // Methods

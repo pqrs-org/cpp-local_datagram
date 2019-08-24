@@ -14,8 +14,6 @@ TEST_CASE("local_datagram::client") {
     size_t connect_failed_count = 0;
     size_t closed_count = 0;
     std::string last_error_message;
-    std::unordered_set<pqrs::local_datagram::request_id> requested;
-    std::unordered_set<pqrs::local_datagram::request_id> processed;
 
     auto client = std::make_unique<pqrs::local_datagram::client>(dispatcher,
                                                                  socket_path,
@@ -45,10 +43,6 @@ TEST_CASE("local_datagram::client") {
       last_error_message = error_code.message();
     });
 
-    client->processed.connect([&](auto&& request_id) {
-      processed.insert(request_id);
-    });
-
     // Create client before server
 
     client->async_start();
@@ -76,8 +70,7 @@ TEST_CASE("local_datagram::client") {
       std::vector<uint8_t> buffer(1024);
       int loop_count = 20;
       for (int j = 0; j < loop_count; ++j) {
-        auto request_id = client->async_send(buffer);
-        requested.insert(request_id);
+        client->async_send(buffer);
       }
 
       while (server->get_received_count() < previous_received_count + buffer.size() * loop_count) {
@@ -104,8 +97,7 @@ TEST_CASE("local_datagram::client") {
 
       // Send data while server is down (data will be sent after reconnection.)
 
-      auto request_id = client->async_send(buffer);
-      requested.insert(request_id);
+      client->async_send(buffer);
 
       // Recreate server
 
@@ -124,8 +116,6 @@ TEST_CASE("local_datagram::client") {
 
       connect_failed_count = 0;
       last_error_message = "";
-
-      REQUIRE(requested == processed);
     }
   }
 
@@ -144,8 +134,6 @@ TEST_CASE("local_datagram::client large_buffer") {
                                                 std::nullopt);
 
     std::string last_error_message;
-    std::unordered_set<pqrs::local_datagram::request_id> requested;
-    std::unordered_set<pqrs::local_datagram::request_id> processed;
 
     auto client = std::make_unique<pqrs::local_datagram::client>(dispatcher,
                                                                  socket_path,
@@ -153,10 +141,6 @@ TEST_CASE("local_datagram::client large_buffer") {
 
     client->error_occurred.connect([&](auto&& error_code) {
       last_error_message = error_code.message();
-    });
-
-    client->processed.connect([&](auto&& request_id) {
-      processed.insert(request_id);
     });
 
     client->async_start();
@@ -167,9 +151,7 @@ TEST_CASE("local_datagram::client large_buffer") {
 
     {
       std::vector<uint8_t> buffer(server_buffer_size, '1');
-      auto request_id = client->async_send(buffer);
-
-      requested.insert(request_id);
+      client->async_send(buffer);
 
       std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
@@ -183,9 +165,7 @@ TEST_CASE("local_datagram::client large_buffer") {
 
     {
       std::vector<uint8_t> buffer(server_buffer_size + 64, '2');
-      auto request_id = client->async_send(buffer);
-
-      requested.insert(request_id);
+      client->async_send(buffer);
 
       std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
@@ -200,8 +180,6 @@ TEST_CASE("local_datagram::client large_buffer") {
         REQUIRE(last_error_message == "Message too long");
       }
     }
-
-    REQUIRE(requested == processed);
   }
 
   // client_buffer_size > server_buffer_size
@@ -210,8 +188,6 @@ TEST_CASE("local_datagram::client large_buffer") {
                                                 std::nullopt);
 
     std::string last_error_message;
-    std::unordered_set<pqrs::local_datagram::request_id> requested;
-    std::unordered_set<pqrs::local_datagram::request_id> processed;
 
     size_t client_buffer_size = server_buffer_size + 32;
     auto client = std::make_unique<pqrs::local_datagram::client>(dispatcher,
@@ -222,10 +198,6 @@ TEST_CASE("local_datagram::client large_buffer") {
       last_error_message = error_code.message();
     });
 
-    client->processed.connect([&](auto&& request_id) {
-      processed.insert(request_id);
-    });
-
     client->async_start();
 
     //
@@ -234,9 +206,7 @@ TEST_CASE("local_datagram::client large_buffer") {
 
     {
       std::vector<uint8_t> buffer(server_buffer_size, '1');
-      auto request_id = client->async_send(buffer);
-
-      requested.insert(request_id);
+      client->async_send(buffer);
 
       std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
@@ -250,9 +220,7 @@ TEST_CASE("local_datagram::client large_buffer") {
 
     {
       std::vector<uint8_t> buffer(client_buffer_size, '2');
-      auto request_id = client->async_send(buffer);
-
-      requested.insert(request_id);
+      client->async_send(buffer);
 
       std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
@@ -267,8 +235,6 @@ TEST_CASE("local_datagram::client large_buffer") {
         REQUIRE(last_error_message == "No buffer space available");
       }
     }
-
-    REQUIRE(requested == processed);
   }
 
   dispatcher->terminate();

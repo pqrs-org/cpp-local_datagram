@@ -10,6 +10,7 @@
 #include "request_id.hpp"
 #include <nod/nod.hpp>
 #include <pqrs/dispatcher.hpp>
+#include <unordered_map>
 
 namespace pqrs {
 namespace local_datagram {
@@ -21,7 +22,6 @@ public:
   nod::signal<void(const asio::error_code&)> connect_failed;
   nod::signal<void(void)> closed;
   nod::signal<void(const asio::error_code&)> error_occurred;
-  nod::signal<void(request_id)> processed;
 
   // Methods
 
@@ -67,12 +67,6 @@ public:
         error_occurred(error_code);
       });
     });
-
-    impl_client_->processed.connect([this](auto&& request_id) {
-      enqueue_to_dispatcher([this, request_id] {
-        processed(request_id);
-      });
-    });
   }
 
   virtual ~client(void) {
@@ -103,37 +97,28 @@ public:
     });
   }
 
-  request_id async_send(const std::vector<uint8_t>& v) {
+  request_id async_send(const std::vector<uint8_t>& v,
+                        const std::function<void(void)>& processed = nullptr) {
     auto request_id = make_request_id();
     auto ptr = std::make_shared<impl::buffer>(impl::buffer::type::user_data,
                                               request_id,
                                               v);
 
-    enqueue_to_dispatcher([this, request_id, ptr] {
-      if (impl_client_) {
-        impl_client_->async_send(ptr);
-      } else {
-        processed(request_id);
-      }
-    });
+    async_send(ptr, processed);
 
     return request_id;
   }
 
-  request_id async_send(const uint8_t* p, size_t length) {
+  request_id async_send(const uint8_t* p,
+                        size_t length,
+                        const std::function<void(void)>& processed = nullptr) {
     auto request_id = make_request_id();
     auto ptr = std::make_shared<impl::buffer>(impl::buffer::type::user_data,
                                               request_id,
                                               p,
                                               length);
 
-    enqueue_to_dispatcher([this, request_id, ptr] {
-      if (impl_client_) {
-        impl_client_->async_send(ptr);
-      } else {
-        processed(request_id);
-      }
-    });
+    async_send(ptr, processed);
 
     return request_id;
   }
@@ -188,10 +173,52 @@ private:
     return ++last_request_id_;
   }
 
+  void async_send(std::shared_ptr<impl::buffer> buffer,
+                  const std::function<void(void)>& processed) {
+    enqueue_to_dispatcher([this, buffer, processed] {
+      if (impl_client_) {
+        //
+        // Prepare `processed`
+        //
+
+        if (processed) {
+          if (auto id = buffer->get_request_id()) {
+            processed_connections_[*id] = impl_client_->processed.connect([this, processed, id](auto&& request_id) {
+              if (*id == request_id) {
+                enqueue_to_dispatcher([processed] {
+                  processed();
+                });
+
+                processed_connections_.erase(*id);
+              }
+            });
+          }
+        }
+
+        //
+        // async_send
+        //
+
+        impl_client_->async_send(buffer);
+      } else {
+        //
+        // Call `processed`
+        //
+
+        if (processed) {
+          enqueue_to_dispatcher([processed] {
+            processed();
+          });
+        }
+      }
+    });
+  }
+
   std::string path_;
   size_t buffer_size_;
   request_id last_request_id_;
   std::mutex last_request_id_mutex_;
+  std::unordered_map<request_id, nod::scoped_connection> processed_connections_;
   std::optional<std::chrono::milliseconds> server_check_interval_;
   std::optional<std::chrono::milliseconds> reconnect_interval_;
   std::shared_ptr<impl::client> impl_client_;

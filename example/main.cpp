@@ -81,15 +81,14 @@ int main(void) {
   client->error_occurred.connect([](auto&& error_code) {
     std::cout << "client error_occurred:" << error_code.message() << std::endl;
   });
-  client->processed.connect([](auto&& request_id) {
-    std::cout << "client processed:" << request_id << std::endl;
-  });
 
   client->async_start();
   {
     std::vector<uint8_t> buffer;
     buffer.push_back('1');
-    auto request_id = client->async_send(buffer);
+    auto request_id = client->async_send(buffer, [] {
+      std::cout << "processed `1`" << std::endl;
+    });
     std::cout << "request_id:" << request_id << std::endl;
   }
   {
@@ -106,7 +105,9 @@ int main(void) {
   }
   {
     std::vector<uint8_t> buffer(client_buffer_size, '4');
-    auto request_id = client->async_send(buffer);
+    auto request_id = client->async_send(buffer, [] {
+      std::cout << "processed `4`" << std::endl;
+    });
     std::cout << "request_id:" << request_id << std::endl;
   }
 
