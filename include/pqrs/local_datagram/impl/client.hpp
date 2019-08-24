@@ -14,7 +14,6 @@
 #undef ASIO_STANDALONE
 #endif
 
-#include "../request_id.hpp"
 #include "client_send_entry.hpp"
 #include <deque>
 #include <nod/nod.hpp>
@@ -32,8 +31,6 @@ public:
   nod::signal<void(const asio::error_code&)> connect_failed;
   nod::signal<void(void)> closed;
   nod::signal<void(const asio::error_code&)> error_occurred;
-  // Only in impl::client
-  nod::signal<void(request_id)> processed;
 
   // Methods
 
@@ -175,8 +172,7 @@ private:
 
   // This method is executed in `io_service_thread_`.
   void check_server(void) {
-    auto b = std::make_shared<client_send_entry>(client_send_entry::type::server_check,
-                                                 std::nullopt);
+    auto b = std::make_shared<client_send_entry>(client_send_entry::type::server_check);
     async_send(b);
   }
 
@@ -268,9 +264,9 @@ private:
             }
           } while (sent < entry->get_buffer().size());
 
-          if (auto request_id = entry->get_request_id()) {
-            enqueue_to_dispatcher([this, request_id] {
-              processed(*request_id);
+          if (auto&& processed = entry->get_processed()) {
+            enqueue_to_dispatcher([processed] {
+              processed();
             });
           }
         }

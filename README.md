@@ -17,7 +17,6 @@ cpp-local_datagram depends the following classes.
 - [asio](https://github.com/chriskohlhoff/asio/)
 - [Nod](https://github.com/fr00b0/nod)
 - [pqrs::dispatcher](https://github.com/pqrs-org/cpp-dispatcher)
-- [type_safe](https://github.com/foonathan/type_safe)
 
 ## Install
 

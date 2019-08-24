@@ -7,7 +7,6 @@
 // `pqrs::local_datagram::client` can be used safely in a multi-threaded environment.
 
 #include "impl/client.hpp"
-#include "request_id.hpp"
 #include <nod/nod.hpp>
 #include <pqrs/dispatcher.hpp>
 #include <unordered_map>
@@ -32,7 +31,6 @@ public:
          size_t buffer_size) : dispatcher_client(weak_dispatcher),
                                path_(path),
                                buffer_size_(buffer_size),
-                               last_request_id_(0),
                                reconnect_timer_(*this) {
     impl_client_ = std::make_shared<impl::client>(weak_dispatcher_);
 
@@ -97,30 +95,22 @@ public:
     });
   }
 
-  request_id async_send(const std::vector<uint8_t>& v,
-                        const std::function<void(void)>& processed = nullptr) {
-    auto request_id = make_request_id();
-    auto ptr = std::make_shared<impl::client_send_entry>(impl::client_send_entry::type::user_data,
-                                                         request_id,
-                                                         v);
-
-    async_send(ptr, processed);
-
-    return request_id;
+  void async_send(const std::vector<uint8_t>& v,
+                  const std::function<void(void)>& processed = nullptr) {
+    auto entry = std::make_shared<impl::client_send_entry>(impl::client_send_entry::type::user_data,
+                                                           v,
+                                                           processed);
+    async_send(entry);
   }
 
-  request_id async_send(const uint8_t* p,
-                        size_t length,
-                        const std::function<void(void)>& processed = nullptr) {
-    auto request_id = make_request_id();
-    auto ptr = std::make_shared<impl::client_send_entry>(impl::client_send_entry::type::user_data,
-                                                         request_id,
-                                                         p,
-                                                         length);
-
-    async_send(ptr, processed);
-
-    return request_id;
+  void async_send(const uint8_t* p,
+                  size_t length,
+                  const std::function<void(void)>& processed = nullptr) {
+    auto entry = std::make_shared<impl::client_send_entry>(impl::client_send_entry::type::user_data,
+                                                           p,
+                                                           length,
+                                                           processed);
+    async_send(entry);
   }
 
 private:
@@ -167,44 +157,16 @@ private:
     }
   }
 
-  request_id make_request_id(void) {
-    std::lock_guard<std::mutex> lock(last_request_id_mutex_);
-
-    return ++last_request_id_;
-  }
-
-  void async_send(std::shared_ptr<impl::client_send_entry> entry,
-                  const std::function<void(void)>& processed) {
-    enqueue_to_dispatcher([this, entry, processed] {
+  void async_send(std::shared_ptr<impl::client_send_entry> entry) {
+    enqueue_to_dispatcher([this, entry] {
       if (impl_client_) {
-        //
-        // Prepare `processed`
-        //
-
-        if (processed) {
-          if (auto id = entry->get_request_id()) {
-            processed_connections_[*id] = impl_client_->processed.connect([this, processed, id](auto&& request_id) {
-              if (*id == request_id) {
-                enqueue_to_dispatcher([processed] {
-                  processed();
-                });
-
-                processed_connections_.erase(*id);
-              }
-            });
-          }
-        }
-
-        //
-        // async_send
-        //
-
         impl_client_->async_send(entry);
       } else {
         //
         // Call `processed`
         //
 
+        auto&& processed = entry->get_processed();
         if (processed) {
           enqueue_to_dispatcher([processed] {
             processed();
@@ -216,9 +178,6 @@ private:
 
   std::string path_;
   size_t buffer_size_;
-  request_id last_request_id_;
-  std::mutex last_request_id_mutex_;
-  std::unordered_map<request_id, nod::scoped_connection> processed_connections_;
   std::optional<std::chrono::milliseconds> server_check_interval_;
   std::optional<std::chrono::milliseconds> reconnect_interval_;
   std::shared_ptr<impl::client> impl_client_;

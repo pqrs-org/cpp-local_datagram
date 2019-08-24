@@ -1,6 +1,5 @@
 catchorg/Catch2
 chriskohlhoff/asio
-foonathan/type_safe
 fr00b0/nod
 pqrs-org/cpp-dispatcher
 pqrs-org/cpp-filesystem

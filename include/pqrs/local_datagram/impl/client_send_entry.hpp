@@ -6,7 +6,6 @@
 
 // `pqrs::local_datagram::impl::client_send_entry` can be used safely in a multi-threaded environment.
 
-#include "../request_id.hpp"
 #include <optional>
 #include <vector>
 
@@ -24,13 +23,13 @@ public:
   };
 
   client_send_entry(type t,
-                    std::optional<request_id> request_id) : request_id_(request_id) {
+                    const std::function<void(void)>& processed = nullptr) : processed_(processed) {
     buffer_.push_back(static_cast<uint8_t>(t));
   }
 
   client_send_entry(type t,
-                    std::optional<request_id> request_id,
-                    const std::vector<uint8_t>& v) : request_id_(request_id) {
+                    const std::vector<uint8_t>& v,
+                    const std::function<void(void)>& processed = nullptr) : processed_(processed) {
     buffer_.push_back(static_cast<uint8_t>(t));
 
     std::copy(std::begin(v),
@@ -39,9 +38,9 @@ public:
   }
 
   client_send_entry(type t,
-                    std::optional<request_id> request_id,
                     const uint8_t* p,
-                    size_t length) : request_id_(request_id) {
+                    size_t length,
+                    const std::function<void(void)>& processed = nullptr) : processed_(processed) {
     buffer_.push_back(static_cast<uint8_t>(t));
 
     if (p && length > 0) {
@@ -51,17 +50,17 @@ public:
     }
   }
 
-  const std::optional<request_id>& get_request_id(void) const {
-    return request_id_;
-  }
-
   const std::vector<uint8_t>& get_buffer(void) const {
     return buffer_;
   }
 
+  const std::function<void(void)>& get_processed(void) const {
+    return processed_;
+  }
+
 private:
-  std::optional<request_id> request_id_;
   std::vector<uint8_t> buffer_;
+  std::function<void(void)> processed_;
 };
 } // namespace impl
 } // namespace local_datagram
