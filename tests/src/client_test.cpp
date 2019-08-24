@@ -69,8 +69,15 @@ TEST_CASE("local_datagram::client") {
 
       std::vector<uint8_t> buffer(1024);
       int loop_count = 20;
+      int processed_count = 0;
       for (int j = 0; j < loop_count; ++j) {
-        client->async_send(buffer);
+        if (j < loop_count / 2) {
+          client->async_send(buffer);
+        } else {
+          client->async_send(buffer, [&processed_count] {
+            ++processed_count;
+          });
+        }
       }
 
       while (server->get_received_count() < previous_received_count + buffer.size() * loop_count) {
@@ -78,6 +85,7 @@ TEST_CASE("local_datagram::client") {
       }
 
       REQUIRE(last_error_message == "");
+      REQUIRE(processed_count == loop_count / 2);
 
       // Shutdown servr
 
