@@ -248,3 +248,76 @@ TEST_CASE("local_datagram::client large_buffer") {
   dispatcher->terminate();
   dispatcher = nullptr;
 }
+
+TEST_CASE("local_datagram::client processed") {
+  std::cout << "TEST_CASE(local_datagram::client processed)" << std::endl;
+
+  auto time_source = std::make_shared<pqrs::dispatcher::hardware_time_source>();
+  auto dispatcher = std::make_shared<pqrs::dispatcher::dispatcher>(time_source);
+
+  //
+  // async_send after client is stopped
+  //
+
+  {
+    auto server = std::make_unique<test_server>(dispatcher,
+                                                std::nullopt);
+
+    auto client = std::make_unique<pqrs::local_datagram::client>(dispatcher,
+                                                                 socket_path,
+                                                                 server_buffer_size);
+
+    client->async_start();
+
+    client->async_stop();
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+    int processed_count = 0;
+    std::vector<uint8_t> buffer(8, '0');
+    client->async_send(buffer, [&] {
+      ++processed_count;
+    });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+    REQUIRE(processed_count == 1);
+  }
+
+  //
+  // async_send with error (message_size)
+  //
+
+  {
+    auto server = std::make_unique<test_server>(dispatcher,
+                                                std::nullopt);
+
+    asio::error_code last_error_code;
+
+    auto client = std::make_unique<pqrs::local_datagram::client>(dispatcher,
+                                                                 socket_path,
+                                                                 server_buffer_size);
+
+    client->error_occurred.connect([&](auto&& error_code) {
+      last_error_code = error_code;
+    });
+
+    client->async_start();
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+    int processed_count = 0;
+    std::vector<uint8_t> buffer(server_buffer_size * 2, '0');
+    client->async_send(buffer, [&] {
+      ++processed_count;
+    });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+    REQUIRE(processed_count == 1);
+    REQUIRE(last_error_code == asio::error::message_size);
+  }
+
+  dispatcher->terminate();
+  dispatcher = nullptr;
+}
