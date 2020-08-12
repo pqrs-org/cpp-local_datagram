@@ -20,6 +20,7 @@ public:
   enum class type : uint8_t {
     server_check,
     user_data,
+    response,
   };
 
   send_entry(type t,

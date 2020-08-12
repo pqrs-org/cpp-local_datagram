@@ -6,7 +6,7 @@
 
 // `pqrs::local_datagram::impl::server` can be used safely in a multi-threaded environment.
 
-#include "client.hpp"
+#include "client_impl.hpp"
 #include <nod/nod.hpp>
 #include <pqrs/dispatcher.hpp>
 #include <unistd.h>
@@ -189,28 +189,28 @@ private:
   // This method is executed in `io_service_thread_`.
   void stop_server_check(void) {
     server_check_timer_.stop();
-    server_check_client_ = nullptr;
+    server_check_client_impl_ = nullptr;
   }
 
   // This method is executed in `io_service_thread_`.
   void check_server(const std::string& path) {
-    if (!server_check_client_) {
-      server_check_client_ = std::make_unique<client>(weak_dispatcher_);
+    if (!server_check_client_impl_) {
+      server_check_client_impl_ = std::make_unique<client_impl>(weak_dispatcher_);
 
-      server_check_client_->connected.connect([this] {
+      server_check_client_impl_->connected.connect([this] {
         io_service_.post([this] {
-          server_check_client_ = nullptr;
+          server_check_client_impl_ = nullptr;
         });
       });
 
-      server_check_client_->connect_failed.connect([this](auto&& error_code) {
+      server_check_client_impl_->connect_failed.connect([this](auto&& error_code) {
         io_service_.post([this] {
           close();
         });
       });
 
       size_t buffer_size = 32;
-      server_check_client_->async_connect(path, buffer_size, std::nullopt);
+      server_check_client_impl_->async_connect(path, buffer_size, std::nullopt);
     }
   }
 
@@ -224,7 +224,7 @@ private:
   std::vector<uint8_t> buffer_;
 
   dispatcher::extra::timer server_check_timer_;
-  std::unique_ptr<client> server_check_client_;
+  std::unique_ptr<client_impl> server_check_client_impl_;
 };
 } // namespace impl
 } // namespace local_datagram

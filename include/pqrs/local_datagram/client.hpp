@@ -6,7 +6,7 @@
 
 // `pqrs::local_datagram::client` can be used safely in a multi-threaded environment.
 
-#include "impl/client.hpp"
+#include "impl/client_impl.hpp"
 #include <nod/nod.hpp>
 #include <pqrs/dispatcher.hpp>
 #include <unordered_map>
@@ -32,27 +32,27 @@ public:
                                path_(path),
                                buffer_size_(buffer_size),
                                reconnect_timer_(*this) {
-    impl_client_ = std::make_shared<impl::client>(weak_dispatcher_);
+    client_impl_ = std::make_shared<impl::client_impl>(weak_dispatcher_);
 
-    impl_client_->connected.connect([this] {
+    client_impl_->connected.connect([this] {
       enqueue_to_dispatcher([this] {
         connected();
       });
     });
 
-    impl_client_->connect_failed.connect([this](auto&& error_code) {
+    client_impl_->connect_failed.connect([this](auto&& error_code) {
       enqueue_to_dispatcher([this, error_code] {
         connect_failed(error_code);
       });
 
-      if (impl_client_) {
-        impl_client_->async_close();
+      if (client_impl_) {
+        client_impl_->async_close();
       }
 
       start_reconnect_timer();
     });
 
-    impl_client_->closed.connect([this] {
+    client_impl_->closed.connect([this] {
       enqueue_to_dispatcher([this] {
         closed();
       });
@@ -60,7 +60,7 @@ public:
       start_reconnect_timer();
     });
 
-    impl_client_->error_occurred.connect([this](auto&& error_code) {
+    client_impl_->error_occurred.connect([this](auto&& error_code) {
       enqueue_to_dispatcher([this, error_code] {
         error_occurred(error_code);
       });
@@ -124,8 +124,8 @@ private:
 
   // This method is executed in the dispatcher thread.
   void connect(void) {
-    if (impl_client_) {
-      impl_client_->async_connect(path_,
+    if (client_impl_) {
+      client_impl_->async_connect(path_,
                                   buffer_size_,
                                   server_check_interval_);
     }
@@ -133,7 +133,7 @@ private:
 
   // This method is executed in the dispatcher thread.
   void close(void) {
-    impl_client_ = nullptr;
+    client_impl_ = nullptr;
   }
 
   // This method is executed in the dispatcher thread.
@@ -159,8 +159,8 @@ private:
 
   void async_send(std::shared_ptr<impl::send_entry> entry) {
     enqueue_to_dispatcher([this, entry] {
-      if (impl_client_) {
-        impl_client_->async_send(entry);
+      if (client_impl_) {
+        client_impl_->async_send(entry);
       } else {
         //
         // Call `processed`
@@ -180,7 +180,7 @@ private:
   size_t buffer_size_;
   std::optional<std::chrono::milliseconds> server_check_interval_;
   std::optional<std::chrono::milliseconds> reconnect_interval_;
-  std::shared_ptr<impl::client> impl_client_;
+  std::shared_ptr<impl::client_impl> client_impl_;
   dispatcher::extra::timer reconnect_timer_;
 };
 } // namespace local_datagram
