@@ -97,19 +97,19 @@ public:
 
   void async_send(const std::vector<uint8_t>& v,
                   const std::function<void(void)>& processed = nullptr) {
-    auto entry = std::make_shared<impl::client_send_entry>(impl::client_send_entry::type::user_data,
-                                                           v,
-                                                           processed);
+    auto entry = std::make_shared<impl::send_entry>(impl::send_entry::type::user_data,
+                                                    v,
+                                                    processed);
     async_send(entry);
   }
 
   void async_send(const uint8_t* p,
                   size_t length,
                   const std::function<void(void)>& processed = nullptr) {
-    auto entry = std::make_shared<impl::client_send_entry>(impl::client_send_entry::type::user_data,
-                                                           p,
-                                                           length,
-                                                           processed);
+    auto entry = std::make_shared<impl::send_entry>(impl::send_entry::type::user_data,
+                                                    p,
+                                                    length,
+                                                    processed);
     async_send(entry);
   }
 
@@ -157,7 +157,7 @@ private:
     }
   }
 
-  void async_send(std::shared_ptr<impl::client_send_entry> entry) {
+  void async_send(std::shared_ptr<impl::send_entry> entry) {
     enqueue_to_dispatcher([this, entry] {
       if (impl_client_) {
         impl_client_->async_send(entry);

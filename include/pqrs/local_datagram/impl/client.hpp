@@ -14,7 +14,7 @@
 #undef ASIO_STANDALONE
 #endif
 
-#include "client_send_entry.hpp"
+#include "send_entry.hpp"
 #include <deque>
 #include <nod/nod.hpp>
 #include <optional>
@@ -86,7 +86,7 @@ public:
 
       // Set options
 
-      // A margin (1 byte) is required to append client_send_entry::type.
+      // A margin (1 byte) is required to append send_entry::type.
       socket_->set_option(asio::socket_base::send_buffer_size(buffer_size + 1));
 
       // Connect
@@ -143,7 +143,7 @@ public:
     });
   }
 
-  void async_send(std::shared_ptr<client_send_entry> entry) {
+  void async_send(std::shared_ptr<send_entry> entry) {
     io_service_.post([this, entry] {
       send_entries_.push_back(entry);
     });
@@ -172,7 +172,7 @@ private:
 
   // This method is executed in `io_service_thread_`.
   void check_server(void) {
-    auto b = std::make_shared<client_send_entry>(client_send_entry::type::server_check);
+    auto b = std::make_shared<send_entry>(send_entry::type::server_check);
     async_send(b);
   }
 
@@ -279,7 +279,7 @@ private:
   asio::io_service io_service_;
   std::unique_ptr<asio::io_service::work> work_;
   std::unique_ptr<asio::local::datagram_protocol::socket> socket_;
-  std::deque<std::shared_ptr<client_send_entry>> send_entries_;
+  std::deque<std::shared_ptr<send_entry>> send_entries_;
   std::thread io_service_thread_;
   bool connected_;
 
