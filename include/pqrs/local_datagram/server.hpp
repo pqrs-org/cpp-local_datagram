@@ -6,7 +6,7 @@
 
 // `pqrs::local_datagram::server` can be used safely in a multi-threaded environment.
 
-#include "impl/server.hpp"
+#include "impl/server_impl.hpp"
 #include <nod/nod.hpp>
 #include <pqrs/dispatcher.hpp>
 
@@ -72,19 +72,19 @@ private:
 
   // This method is executed in the dispatcher thread.
   void bind(void) {
-    if (impl_server_) {
+    if (server_impl_) {
       return;
     }
 
-    impl_server_ = std::make_unique<impl::server>(weak_dispatcher_);
+    server_impl_ = std::make_unique<impl::server_impl>(weak_dispatcher_);
 
-    impl_server_->bound.connect([this] {
+    server_impl_->bound.connect([this] {
       enqueue_to_dispatcher([this] {
         bound();
       });
     });
 
-    impl_server_->bind_failed.connect([this](auto&& error_code) {
+    server_impl_->bind_failed.connect([this](auto&& error_code) {
       enqueue_to_dispatcher([this, error_code] {
         bind_failed(error_code);
       });
@@ -93,7 +93,7 @@ private:
       start_reconnect_timer();
     });
 
-    impl_server_->closed.connect([this] {
+    server_impl_->closed.connect([this] {
       enqueue_to_dispatcher([this] {
         closed();
       });
@@ -102,24 +102,24 @@ private:
       start_reconnect_timer();
     });
 
-    impl_server_->received.connect([this](auto&& buffer) {
+    server_impl_->received.connect([this](auto&& buffer) {
       enqueue_to_dispatcher([this, buffer] {
         received(buffer);
       });
     });
 
-    impl_server_->async_bind(path_,
+    server_impl_->async_bind(path_,
                              buffer_size_,
                              server_check_interval_);
   }
 
   // This method is executed in the dispatcher thread.
   void close(void) {
-    if (!impl_server_) {
+    if (!server_impl_) {
       return;
     }
 
-    impl_server_ = nullptr;
+    server_impl_ = nullptr;
   }
 
   // This method is executed in the dispatcher thread.
@@ -147,7 +147,7 @@ private:
   size_t buffer_size_;
   std::optional<std::chrono::milliseconds> server_check_interval_;
   std::optional<std::chrono::milliseconds> reconnect_interval_;
-  std::unique_ptr<impl::server> impl_server_;
+  std::unique_ptr<impl::server_impl> server_impl_;
   dispatcher::extra::timer reconnect_timer_;
 };
 } // namespace local_datagram

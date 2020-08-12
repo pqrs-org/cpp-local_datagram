@@ -4,7 +4,7 @@
 // Distributed under the Boost Software License, Version 1.0.
 // (See http://www.boost.org/LICENSE_1_0.txt)
 
-// `pqrs::local_datagram::impl::server` can be used safely in a multi-threaded environment.
+// `pqrs::local_datagram::impl::server_impl` can be used safely in a multi-threaded environment.
 
 #include "client_impl.hpp"
 #include <nod/nod.hpp>
@@ -14,7 +14,7 @@
 namespace pqrs {
 namespace local_datagram {
 namespace impl {
-class server final : public dispatcher::extra::dispatcher_client {
+class server_impl final : public dispatcher::extra::dispatcher_client {
 public:
   // Signals (invoked from the dispatcher thread)
 
@@ -25,20 +25,20 @@ public:
 
   // Methods
 
-  server(const server&) = delete;
+  server_impl(const server_impl&) = delete;
 
-  server(std::weak_ptr<dispatcher::dispatcher> weak_dispatcher) : dispatcher_client(weak_dispatcher),
-                                                                  io_service_(),
-                                                                  work_(std::make_unique<asio::io_service::work>(io_service_)),
-                                                                  socket_(std::make_unique<asio::local::datagram_protocol::socket>(io_service_)),
-                                                                  bound_(false),
-                                                                  server_check_timer_(*this) {
+  server_impl(std::weak_ptr<dispatcher::dispatcher> weak_dispatcher) : dispatcher_client(weak_dispatcher),
+                                                                       io_service_(),
+                                                                       work_(std::make_unique<asio::io_service::work>(io_service_)),
+                                                                       socket_(std::make_unique<asio::local::datagram_protocol::socket>(io_service_)),
+                                                                       bound_(false),
+                                                                       server_check_timer_(*this) {
     io_service_thread_ = std::thread([this] {
       (this->io_service_).run();
     });
   }
 
-  virtual ~server(void) {
+  virtual ~server_impl(void) {
     async_close();
 
     if (io_service_thread_.joinable()) {
