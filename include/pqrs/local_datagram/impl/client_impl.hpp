@@ -31,13 +31,13 @@ public:
   client_impl(const client_impl&) = delete;
 
   client_impl(std::weak_ptr<dispatcher::dispatcher> weak_dispatcher) : dispatcher_client(weak_dispatcher),
-                                                                       io_service_(),
-                                                                       work_(std::make_unique<asio::io_service::work>(io_service_)),
+                                                                       io_service_(std::make_shared<asio::io_service>()),
+                                                                       work_(std::make_shared<asio::io_service::work>(*io_service_)),
                                                                        socket_(nullptr),
                                                                        connected_(false),
                                                                        server_check_timer_(*this) {
     io_service_thread_ = std::thread([this] {
-      (this->io_service_).run();
+      this->io_service_->run();
     });
   }
 
@@ -55,12 +55,12 @@ public:
   void async_connect(const std::string& path,
                      size_t buffer_size,
                      std::optional<std::chrono::milliseconds> server_check_interval) {
-    io_service_.post([this, path, buffer_size, server_check_interval] {
+    io_service_->post([this, path, buffer_size, server_check_interval] {
       if (socket_) {
         return;
       }
 
-      socket_ = std::make_unique<asio::local::datagram_protocol::socket>(io_service_);
+      socket_ = std::make_shared<asio::local::datagram_protocol::socket>(*io_service_);
 
       connected_ = false;
 
@@ -109,7 +109,7 @@ public:
   }
 
   void async_close(void) {
-    io_service_.post([this] {
+    io_service_->post([this] {
       if (!socket_) {
         return;
       }
@@ -138,7 +138,7 @@ public:
   }
 
   void async_send(std::shared_ptr<send_entry> entry) {
-    io_service_.post([this, entry] {
+    io_service_->post([this, entry] {
       send_entries_.push_back(entry);
     });
 
@@ -151,7 +151,7 @@ private:
     if (server_check_interval) {
       server_check_timer_.start(
           [this] {
-            io_service_.post([this] {
+            io_service_->post([this] {
               check_server();
             });
           },
@@ -171,7 +171,7 @@ private:
   }
 
   void send(void) {
-    io_service_.post([this] {
+    io_service_->post([this] {
       if (!socket_) {
         return;
       }
@@ -270,9 +270,9 @@ private:
     });
   }
 
-  asio::io_service io_service_;
-  std::unique_ptr<asio::io_service::work> work_;
-  std::unique_ptr<asio::local::datagram_protocol::socket> socket_;
+  std::shared_ptr<asio::io_service> io_service_;
+  std::shared_ptr<asio::io_service::work> work_;
+  std::shared_ptr<asio::local::datagram_protocol::socket> socket_;
   std::deque<std::shared_ptr<send_entry>> send_entries_;
   std::thread io_service_thread_;
   bool connected_;
