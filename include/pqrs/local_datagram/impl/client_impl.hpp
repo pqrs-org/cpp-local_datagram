@@ -182,88 +182,91 @@ private:
         return;
       }
 
-      while (!send_entries_->empty()) {
-        if (auto entry = send_entries_->front()) {
-          size_t no_buffer_space_error_count = 0;
-          do {
-            asio::error_code error_code;
-            auto bytes_transferred = socket_->send(asio::buffer(entry->get_buffer()),
-                                                   asio::socket_base::message_flags(0),
-                                                   error_code);
-            entry->set_bytes_transferred(entry->get_bytes_transferred() + bytes_transferred);
-
-            if (error_code) {
-              if (error_code == asio::error::no_buffer_space) {
-                //
-                // Retrying the sending data or abort the buffer is required.
-                //
-                // - Keep the connection.
-                // - Keep or drop the entry.
-                //
-
-                // Retry if no_buffer_space error is continued too much times.
-                ++no_buffer_space_error_count;
-                if (no_buffer_space_error_count > 10) {
-                  // `send` always returns no_buffer_space error on macOS
-                  // when entry->get_buffer().size() > server_buffer_size.
-                  //
-                  // Thus, we have to cancel sending data in the such case.
-                  // (We consider we have to cancel when `send_entry::bytes_transferred` == 0.)
-
-                  if (entry->get_bytes_transferred() == 0) {
-                    // Abort
-
-                    enqueue_to_dispatcher([this, error_code] {
-                      error_occurred(error_code);
-                    });
-                    break;
-
-                  } else {
-                    // Retry
-                    send();
-                    return;
-                  }
-                }
-
-                // Wait until buffer is available.
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-              } else if (error_code == asio::error::message_size) {
-                //
-                // Problem of the sending data.
-                //
-                // - Keep the connection.
-                // - Drop the entry.
-                //
-
-                enqueue_to_dispatcher([this, error_code] {
-                  error_occurred(error_code);
-                });
-                break;
-
-              } else {
-                //
-                // Other errors (e.g., connection error)
-                //
-                // - Close the connection.
-                // - Keep the entry.
-                //
-
-                enqueue_to_dispatcher([this, error_code] {
-                  error_occurred(error_code);
-                });
-
-                async_close();
-                return;
-              }
-            } else {
-              no_buffer_space_error_count = 0;
-            }
-          } while (!entry->transfer_complete());
-        }
-
-        pop_front_send_entry();
+      if (send_entries_->empty()) {
+        return;
       }
+
+      if (auto entry = send_entries_->front()) {
+        size_t no_buffer_space_error_count = 0;
+        do {
+          asio::error_code error_code;
+          auto bytes_transferred = socket_->send(asio::buffer(entry->get_buffer()),
+                                                 asio::socket_base::message_flags(0),
+                                                 error_code);
+          entry->set_bytes_transferred(entry->get_bytes_transferred() + bytes_transferred);
+
+          if (error_code) {
+            if (error_code == asio::error::no_buffer_space) {
+              //
+              // Retrying the sending data or abort the buffer is required.
+              //
+              // - Keep the connection.
+              // - Keep or drop the entry.
+              //
+
+              // Retry if no_buffer_space error is continued too much times.
+              ++no_buffer_space_error_count;
+              if (no_buffer_space_error_count > 10) {
+                // `send` always returns no_buffer_space error on macOS
+                // when entry->get_buffer().size() > server_buffer_size.
+                //
+                // Thus, we have to cancel sending data in the such case.
+                // (We consider we have to cancel when `send_entry::bytes_transferred` == 0.)
+
+                if (entry->get_bytes_transferred() == 0) {
+                  // Abort
+
+                  enqueue_to_dispatcher([this, error_code] {
+                    error_occurred(error_code);
+                  });
+                  break;
+
+                } else {
+                  // Retry
+                  send();
+                  return;
+                }
+              }
+
+              // Wait until buffer is available.
+              std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+            } else if (error_code == asio::error::message_size) {
+              //
+              // Problem of the sending data.
+              //
+              // - Keep the connection.
+              // - Drop the entry.
+              //
+
+              enqueue_to_dispatcher([this, error_code] {
+                error_occurred(error_code);
+              });
+              break;
+
+            } else {
+              //
+              // Other errors (e.g., connection error)
+              //
+              // - Close the connection.
+              // - Keep the entry.
+              //
+
+              enqueue_to_dispatcher([this, error_code] {
+                error_occurred(error_code);
+              });
+
+              async_close();
+              return;
+            }
+          } else {
+            no_buffer_space_error_count = 0;
+          }
+        } while (!entry->transfer_complete());
+      }
+
+      pop_front_send_entry();
+      send();
     });
   }
 
