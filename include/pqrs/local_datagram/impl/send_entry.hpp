@@ -70,6 +70,10 @@ public:
     return processed_;
   }
 
+  bool transfer_complete(void) {
+    return bytes_transferred_ >= buffer_.size();
+  }
+
 private:
   std::vector<uint8_t> buffer_;
   size_t bytes_transferred_;
