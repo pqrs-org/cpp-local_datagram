@@ -30,12 +30,14 @@ public:
 
   client_impl(const client_impl&) = delete;
 
-  client_impl(std::weak_ptr<dispatcher::dispatcher> weak_dispatcher) : dispatcher_client(weak_dispatcher),
-                                                                       io_service_(std::make_shared<asio::io_service>()),
-                                                                       work_(std::make_shared<asio::io_service::work>(*io_service_)),
-                                                                       socket_(nullptr),
-                                                                       connected_(false),
-                                                                       server_check_timer_(*this) {
+  client_impl(std::weak_ptr<dispatcher::dispatcher> weak_dispatcher,
+              std::shared_ptr<std::deque<std::shared_ptr<send_entry>>> send_entries) : dispatcher_client(weak_dispatcher),
+                                                                                       io_service_(std::make_shared<asio::io_service>()),
+                                                                                       work_(std::make_unique<asio::io_service::work>(*io_service_)),
+                                                                                       socket_(nullptr),
+                                                                                       send_entries_(send_entries),
+                                                                                       connected_(false),
+                                                                                       server_check_timer_(*this) {
     io_service_thread_ = std::thread([this] {
       this->io_service_->run();
     });
@@ -139,7 +141,7 @@ public:
 
   void async_send(std::shared_ptr<send_entry> entry) {
     io_service_->post([this, entry] {
-      send_entries_.push_back(entry);
+      send_entries_->push_back(entry);
     });
 
     send();
@@ -180,8 +182,8 @@ private:
         return;
       }
 
-      while (!send_entries_.empty()) {
-        if (auto entry = send_entries_.front()) {
+      while (!send_entries_->empty()) {
+        if (auto entry = send_entries_->front()) {
           size_t sent = 0;
           size_t no_buffer_space_error_count = 0;
           do {
@@ -265,15 +267,15 @@ private:
           }
         }
 
-        send_entries_.pop_front();
+        send_entries_->pop_front();
       }
     });
   }
 
   std::shared_ptr<asio::io_service> io_service_;
-  std::shared_ptr<asio::io_service::work> work_;
+  std::unique_ptr<asio::io_service::work> work_;
   std::shared_ptr<asio::local::datagram_protocol::socket> socket_;
-  std::deque<std::shared_ptr<send_entry>> send_entries_;
+  std::shared_ptr<std::deque<std::shared_ptr<send_entry>>> send_entries_;
   std::thread io_service_thread_;
   bool connected_;
 

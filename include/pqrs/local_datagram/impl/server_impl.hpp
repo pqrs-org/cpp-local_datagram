@@ -32,7 +32,8 @@ public:
                                                                        work_(std::make_unique<asio::io_service::work>(io_service_)),
                                                                        socket_(std::make_unique<asio::local::datagram_protocol::socket>(io_service_)),
                                                                        bound_(false),
-                                                                       server_check_timer_(*this) {
+                                                                       server_check_timer_(*this),
+                                                                       server_check_client_send_entries_(std::make_shared<std::deque<std::shared_ptr<impl::send_entry>>>()) {
     io_service_thread_ = std::thread([this] {
       (this->io_service_).run();
     });
@@ -195,7 +196,9 @@ private:
   // This method is executed in `io_service_thread_`.
   void check_server(const std::string& path) {
     if (!server_check_client_impl_) {
-      server_check_client_impl_ = std::make_unique<client_impl>(weak_dispatcher_);
+      server_check_client_impl_ = std::make_unique<client_impl>(
+          weak_dispatcher_,
+          server_check_client_send_entries_);
 
       server_check_client_impl_->connected.connect([this] {
         io_service_.post([this] {
@@ -225,6 +228,7 @@ private:
 
   dispatcher::extra::timer server_check_timer_;
   std::unique_ptr<client_impl> server_check_client_impl_;
+  std::shared_ptr<std::deque<std::shared_ptr<send_entry>>> server_check_client_send_entries_;
 };
 } // namespace impl
 } // namespace local_datagram
