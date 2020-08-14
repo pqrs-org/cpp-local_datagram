@@ -184,13 +184,14 @@ private:
 
       while (!send_entries_->empty()) {
         if (auto entry = send_entries_->front()) {
-          size_t sent = 0;
           size_t no_buffer_space_error_count = 0;
           do {
             asio::error_code error_code;
-            sent += socket_->send(asio::buffer(entry->get_buffer()),
-                                  asio::socket_base::message_flags(0),
-                                  error_code);
+            auto bytes_transferred = socket_->send(asio::buffer(entry->get_buffer()),
+                                                   asio::socket_base::message_flags(0),
+                                                   error_code);
+            entry->set_bytes_transferred(entry->get_bytes_transferred() + bytes_transferred);
+
             if (error_code) {
               if (error_code == asio::error::no_buffer_space) {
                 //
@@ -207,9 +208,9 @@ private:
                   // when entry->get_buffer().size() > server_buffer_size.
                   //
                   // Thus, we have to cancel sending data in the such case.
-                  // (We consider we have to cancel when `sent` == 0.)
+                  // (We consider we have to cancel when `send_entry::bytes_transferred` == 0.)
 
-                  if (sent == 0) {
+                  if (entry->get_bytes_transferred() == 0) {
                     // Abort
 
                     enqueue_to_dispatcher([this, error_code] {
@@ -258,18 +259,26 @@ private:
             } else {
               no_buffer_space_error_count = 0;
             }
-          } while (sent < entry->get_buffer().size());
-
-          if (auto&& processed = entry->get_processed()) {
-            enqueue_to_dispatcher([processed] {
-              processed();
-            });
-          }
+          } while (!entry->transfer_complete());
         }
 
-        send_entries_->pop_front();
+        pop_front_send_entry();
       }
     });
+  }
+
+  void pop_front_send_entry(void) {
+    if (send_entries_->empty()) {
+      return;
+    }
+
+    if (auto entry = send_entries_->front()) {
+      if (auto&& processed = entry->get_processed()) {
+        processed();
+      }
+    }
+
+    send_entries_->pop_front();
   }
 
   std::shared_ptr<asio::io_service> io_service_;
