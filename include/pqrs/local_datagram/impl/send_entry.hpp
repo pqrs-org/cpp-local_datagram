@@ -6,6 +6,7 @@
 
 // `pqrs::local_datagram::impl::send_entry` can be used safely in a multi-threaded environment.
 
+#include "asio_helper.hpp"
 #include <optional>
 #include <vector>
 
@@ -57,10 +58,6 @@ public:
     }
   }
 
-  const std::vector<uint8_t>& get_buffer(void) const {
-    return buffer_;
-  }
-
   const std::function<void(void)>& get_processed(void) const {
     return processed_;
   }
@@ -69,16 +66,34 @@ public:
     return bytes_transferred_;
   }
 
-  void set_bytes_transferred(size_t value) {
-    bytes_transferred_ = value;
-  }
-
   size_t get_no_buffer_space_error_count(void) const {
     return no_buffer_space_error_count_;
   }
 
   void set_no_buffer_space_error_count(size_t value) {
     no_buffer_space_error_count_ = value;
+  }
+
+  const asio::const_buffer make_buffer(void) const {
+    if (bytes_transferred_ >= buffer_.size()) {
+      return asio::const_buffer();
+    }
+
+    return asio::const_buffer(
+        &(buffer_[0]) + bytes_transferred_,
+        buffer_.size() - bytes_transferred_);
+  }
+
+  void add_bytes_transferred(size_t value) {
+    bytes_transferred_ += value;
+  }
+
+  size_t rest_bytes(void) {
+    if (bytes_transferred_ >= buffer_.size()) {
+      return 0;
+    }
+
+    return buffer_.size() - bytes_transferred_;
   }
 
   bool transfer_complete(void) {
