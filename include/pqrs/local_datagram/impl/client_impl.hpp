@@ -8,7 +8,6 @@
 
 #include "asio_helper.hpp"
 #include "send_entry.hpp"
-#include "sender.hpp"
 #include <deque>
 #include <nod/nod.hpp>
 #include <optional>
@@ -187,7 +186,6 @@ private:
       }
 
       if (auto entry = send_entries_->front()) {
-        size_t no_buffer_space_error_count = 0;
         do {
           asio::error_code error_code;
           auto bytes_transferred = socket_->send(asio::buffer(entry->get_buffer()),
@@ -205,8 +203,10 @@ private:
               //
 
               // Retry if no_buffer_space error is continued too much times.
-              ++no_buffer_space_error_count;
-              if (no_buffer_space_error_count > 10) {
+              entry->set_no_buffer_space_error_count(
+                  entry->get_no_buffer_space_error_count() + 1);
+
+              if (entry->get_no_buffer_space_error_count() > 10) {
                 // `send` always returns no_buffer_space error on macOS
                 // when entry->get_buffer().size() > server_buffer_size.
                 //
@@ -260,7 +260,7 @@ private:
               return;
             }
           } else {
-            no_buffer_space_error_count = 0;
+            entry->set_no_buffer_space_error_count(0);
           }
         } while (!entry->transfer_complete());
       }

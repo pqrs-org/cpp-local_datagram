@@ -24,15 +24,17 @@ public:
   };
 
   send_entry(type t,
-             const std::function<void(void)>& processed = nullptr) : bytes_transferred_(0),
-                                                                     processed_(processed) {
+             const std::function<void(void)>& processed = nullptr) : processed_(processed),
+                                                                     bytes_transferred_(0),
+                                                                     no_buffer_space_error_count_(0) {
     buffer_.push_back(static_cast<uint8_t>(t));
   }
 
   send_entry(type t,
              const std::vector<uint8_t>& v,
-             const std::function<void(void)>& processed = nullptr) : bytes_transferred_(0),
-                                                                     processed_(processed) {
+             const std::function<void(void)>& processed = nullptr) : processed_(processed),
+                                                                     bytes_transferred_(0),
+                                                                     no_buffer_space_error_count_(0) {
     buffer_.push_back(static_cast<uint8_t>(t));
 
     std::copy(std::begin(v),
@@ -43,8 +45,9 @@ public:
   send_entry(type t,
              const uint8_t* p,
              size_t length,
-             const std::function<void(void)>& processed = nullptr) : bytes_transferred_(0),
-                                                                     processed_(processed) {
+             const std::function<void(void)>& processed = nullptr) : processed_(processed),
+                                                                     bytes_transferred_(0),
+                                                                     no_buffer_space_error_count_(0) {
     buffer_.push_back(static_cast<uint8_t>(t));
 
     if (p && length > 0) {
@@ -58,6 +61,10 @@ public:
     return buffer_;
   }
 
+  const std::function<void(void)>& get_processed(void) const {
+    return processed_;
+  }
+
   size_t get_bytes_transferred(void) const {
     return bytes_transferred_;
   }
@@ -66,8 +73,12 @@ public:
     bytes_transferred_ = value;
   }
 
-  const std::function<void(void)>& get_processed(void) const {
-    return processed_;
+  size_t get_no_buffer_space_error_count(void) const {
+    return no_buffer_space_error_count_;
+  }
+
+  void set_no_buffer_space_error_count(size_t value) {
+    no_buffer_space_error_count_ = value;
   }
 
   bool transfer_complete(void) {
@@ -76,8 +87,9 @@ public:
 
 private:
   std::vector<uint8_t> buffer_;
-  size_t bytes_transferred_;
   std::function<void(void)> processed_;
+  size_t bytes_transferred_;
+  size_t no_buffer_space_error_count_;
 };
 } // namespace impl
 } // namespace local_datagram
