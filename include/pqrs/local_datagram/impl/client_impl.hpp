@@ -108,7 +108,7 @@ public:
                                  });
 
                                  // Flush send_entries_.
-                                 await_entry();
+                                 await_entry(std::nullopt);
                                }
                              });
     });
@@ -182,18 +182,23 @@ private:
   }
 
   // This method is executed in `io_service_thread_`.
-  void await_entry() {
+  void await_entry(std::optional<std::chrono::milliseconds> delay) {
     if (!socket_ ||
         !connected_) {
       return;
     }
 
-    if (send_entries_->empty()) {
+    if (delay || send_entries_->empty()) {
       // Sleep until new entry is added.
-      send_invoker_.expires_at(asio_helper::time_point::pos_infin());
+      if (delay) {
+        send_invoker_.expires_after(*delay);
+      } else {
+        send_invoker_.expires_at(asio_helper::time_point::pos_infin());
+      }
+
       send_invoker_.async_wait(
           [this](const auto& error_code) {
-            await_entry();
+            await_entry(std::nullopt);
           });
 
     } else {
@@ -211,6 +216,8 @@ private:
   void handle_send(const asio::error_code& error_code,
                    size_t bytes_transferred,
                    std::shared_ptr<send_entry> entry) {
+    std::optional<std::chrono::milliseconds> next_delay;
+
     entry->add_bytes_transferred(bytes_transferred);
 
     //
@@ -250,7 +257,7 @@ private:
       }
 
       // Wait until buffer is available.
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      next_delay = std::chrono::milliseconds(100);
 
     } else if (error_code == asio::error::message_size) {
       //
@@ -290,7 +297,7 @@ private:
       pop_front_send_entry();
     }
 
-    await_entry();
+    await_entry(next_delay);
   }
 
   void pop_front_send_entry(void) {
