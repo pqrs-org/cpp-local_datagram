@@ -19,7 +19,7 @@ namespace asio_helper {
 
 namespace time_point {
 inline asio::steady_timer::time_point now() {
-  return std::chrono::steady_clock::now();
+  return asio::steady_timer::clock_type::now();
 }
 
 inline asio::steady_timer::time_point pos_infin() {

@@ -31,22 +31,27 @@ public:
 
   client_impl(std::weak_ptr<dispatcher::dispatcher> weak_dispatcher,
               std::shared_ptr<std::deque<std::shared_ptr<send_entry>>> send_entries) : dispatcher_client(weak_dispatcher),
-                                                                                       io_service_(std::make_shared<asio::io_service>()),
-                                                                                       work_(std::make_unique<asio::io_service::work>(*io_service_)),
-                                                                                       socket_(nullptr),
+                                                                                       io_service_(),
+                                                                                       work_(std::make_unique<asio::io_service::work>(io_service_)),
                                                                                        send_entries_(send_entries),
+                                                                                       send_invoker_(io_service_),
                                                                                        connected_(false),
                                                                                        server_check_timer_(*this) {
+    send_invoker_.expires_at(asio_helper::time_point::pos_infin());
+
     io_service_thread_ = std::thread([this] {
-      this->io_service_->run();
+      this->io_service_.run();
     });
   }
 
   virtual ~client_impl(void) {
     async_close();
 
-    if (io_service_thread_.joinable()) {
+    io_service_.post([this] {
       work_ = nullptr;
+    });
+
+    if (io_service_thread_.joinable()) {
       io_service_thread_.join();
     }
 
@@ -56,12 +61,12 @@ public:
   void async_connect(const std::string& path,
                      size_t buffer_size,
                      std::optional<std::chrono::milliseconds> server_check_interval) {
-    io_service_->post([this, path, buffer_size, server_check_interval] {
+    io_service_.post([this, path, buffer_size, server_check_interval] {
       if (socket_) {
         return;
       }
 
-      socket_ = std::make_shared<asio::local::datagram_protocol::socket>(*io_service_);
+      socket_ = std::make_unique<asio::local::datagram_protocol::socket>(io_service_);
 
       connected_ = false;
 
@@ -103,16 +108,14 @@ public:
                                  });
 
                                  // Flush send_entries_.
-                                 io_service_->post([this] {
-                                   start_send();
-                                 });
+                                 await_entry();
                                }
                              });
     });
   }
 
   void async_close(void) {
-    io_service_->post([this] {
+    io_service_.post([this] {
       if (!socket_) {
         return;
       }
@@ -128,6 +131,8 @@ public:
 
       socket_ = nullptr;
 
+      send_invoker_.cancel();
+
       // Signal
 
       if (connected_) {
@@ -141,12 +146,13 @@ public:
   }
 
   void async_send(std::shared_ptr<send_entry> entry) {
-    io_service_->post([this, entry] {
-      send_entries_->push_back(entry);
+    if (!entry) {
+      return;
+    }
 
-      if (send_entries_->size() == 1) {
-        start_send();
-      }
+    io_service_.post([this, entry] {
+      send_entries_->push_back(entry);
+      send_invoker_.expires_after(std::chrono::milliseconds(0));
     });
   }
 
@@ -156,7 +162,7 @@ private:
     if (server_check_interval) {
       server_check_timer_.start(
           [this] {
-            io_service_->post([this] {
+            io_service_.post([this] {
               check_server();
             });
           },
@@ -176,37 +182,35 @@ private:
   }
 
   // This method is executed in `io_service_thread_`.
-  void start_send() {
-    if (!socket_) {
-      return;
-    }
-
-    if (!connected_) {
+  void await_entry() {
+    if (!socket_ ||
+        !connected_) {
       return;
     }
 
     if (send_entries_->empty()) {
-      return;
+      // Sleep until new entry is added.
+      send_invoker_.expires_at(asio_helper::time_point::pos_infin());
+      send_invoker_.async_wait(
+          [this](const auto& error_code) {
+            await_entry();
+          });
+
+    } else {
+      auto entry = send_entries_->front();
+
+      socket_->async_send(
+          entry->make_buffer(),
+          [this, entry](const auto& error_code, auto bytes_transferred) {
+            handle_send(error_code, bytes_transferred, entry);
+          });
     }
-
-    auto entry = send_entries_->front();
-
-    socket_->async_send(
-        entry->make_buffer(),
-        [this](const auto& error_code, auto bytes_transferred) {
-          handle_send(error_code, bytes_transferred);
-        });
   }
 
   // This method is executed in `io_service_thread_`.
   void handle_send(const asio::error_code& error_code,
-                   size_t bytes_transferred) {
-    if (send_entries_->empty()) {
-      return;
-    }
-
-    auto entry = send_entries_->front();
-
+                   size_t bytes_transferred,
+                   std::shared_ptr<send_entry> entry) {
     entry->add_bytes_transferred(bytes_transferred);
 
     //
@@ -286,7 +290,7 @@ private:
       pop_front_send_entry();
     }
 
-    start_send();
+    await_entry();
   }
 
   void pop_front_send_entry(void) {
@@ -294,19 +298,19 @@ private:
       return;
     }
 
-    if (auto entry = send_entries_->front()) {
-      if (auto&& processed = entry->get_processed()) {
-        processed();
-      }
+    auto entry = send_entries_->front();
+    if (auto&& processed = entry->get_processed()) {
+      processed();
     }
 
     send_entries_->pop_front();
   }
 
-  std::shared_ptr<asio::io_service> io_service_;
+  asio::io_service io_service_;
   std::unique_ptr<asio::io_service::work> work_;
-  std::shared_ptr<asio::local::datagram_protocol::socket> socket_;
+  std::unique_ptr<asio::local::datagram_protocol::socket> socket_;
   std::shared_ptr<std::deque<std::shared_ptr<send_entry>>> send_entries_;
+  asio::steady_timer send_invoker_;
   std::thread io_service_thread_;
   bool connected_;
 
