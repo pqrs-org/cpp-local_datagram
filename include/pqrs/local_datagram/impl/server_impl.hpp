@@ -30,9 +30,6 @@ public:
 
   server_impl(std::weak_ptr<dispatcher::dispatcher> weak_dispatcher,
               std::shared_ptr<std::deque<std::shared_ptr<send_entry>>> send_entries) : base_impl(weak_dispatcher, send_entries),
-                                                                                       io_service_(),
-                                                                                       work_(std::make_unique<asio::io_service::work>(io_service_)),
-                                                                                       socket_(std::make_unique<asio::local::datagram_protocol::socket>(io_service_)),
                                                                                        bound_(false),
                                                                                        server_check_timer_(*this),
                                                                                        server_check_client_send_entries_(std::make_shared<std::deque<std::shared_ptr<impl::send_entry>>>()) {
@@ -63,6 +60,8 @@ public:
       bound_path_.clear();
 
       // Open
+
+      socket_ = std::make_unique<asio::local::datagram_protocol::socket>(io_service_);
 
       {
         asio::error_code error_code;
@@ -125,6 +124,10 @@ public:
 private:
   // This method is executed in `io_service_thread_`.
   void close(void) {
+    if (!socket_) {
+      return;
+    }
+
     stop_server_check();
 
     // Close socket
@@ -134,7 +137,7 @@ private:
     socket_->cancel(error_code);
     socket_->close(error_code);
 
-    socket_ = std::make_unique<asio::local::datagram_protocol::socket>(io_service_);
+    socket_ = nullptr;
 
     // Signal
 
@@ -148,7 +151,13 @@ private:
     }
   }
 
+  // This method is executed in `io_service_thread_`.
   void async_receive(void) {
+    if (!socket_ ||
+        !bound_) {
+      return;
+    }
+
     socket_->async_receive(asio::buffer(buffer_),
                            [this](auto&& error_code, auto&& bytes_transferred) {
                              if (!error_code) {
@@ -219,9 +228,6 @@ private:
     }
   }
 
-  asio::io_service io_service_;
-  std::unique_ptr<asio::io_service::work> work_;
-  std::unique_ptr<asio::local::datagram_protocol::socket> socket_;
   std::thread io_service_thread_;
   bool bound_;
   std::string bound_path_;

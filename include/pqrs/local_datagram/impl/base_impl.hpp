@@ -22,11 +22,16 @@ public:
 
   base_impl(std::weak_ptr<dispatcher::dispatcher> weak_dispatcher,
             std::shared_ptr<std::deque<std::shared_ptr<send_entry>>> send_entries) : dispatcher_client(weak_dispatcher),
-                                                                                     send_entries_(send_entries) {
+                                                                                     send_entries_(send_entries),
+                                                                                     io_service_(),
+                                                                                     work_(std::make_unique<asio::io_service::work>(io_service_)) {
   }
 
 protected:
   std::shared_ptr<std::deque<std::shared_ptr<send_entry>>> send_entries_;
+  asio::io_service io_service_;
+  std::unique_ptr<asio::io_service::work> work_;
+  std::unique_ptr<asio::local::datagram_protocol::socket> socket_;
 };
 } // namespace impl
 } // namespace local_datagram

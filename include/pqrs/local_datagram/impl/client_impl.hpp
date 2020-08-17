@@ -32,8 +32,6 @@ public:
 
   client_impl(std::weak_ptr<dispatcher::dispatcher> weak_dispatcher,
               std::shared_ptr<std::deque<std::shared_ptr<send_entry>>> send_entries) : base_impl(weak_dispatcher, send_entries),
-                                                                                       io_service_(),
-                                                                                       work_(std::make_unique<asio::io_service::work>(io_service_)),
                                                                                        send_invoker_(io_service_, asio_helper::time_point::pos_infin()),
                                                                                        send_deadline_(io_service_, asio_helper::time_point::pos_infin()),
                                                                                        connected_(false),
@@ -340,9 +338,6 @@ private:
     }
   }
 
-  asio::io_service io_service_;
-  std::unique_ptr<asio::io_service::work> work_;
-  std::unique_ptr<asio::local::datagram_protocol::socket> socket_;
   asio::steady_timer send_invoker_;
   asio::steady_timer send_deadline_;
   std::thread io_service_thread_;
