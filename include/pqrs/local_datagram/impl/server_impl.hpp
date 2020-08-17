@@ -33,21 +33,12 @@ public:
                                                                                        bound_(false),
                                                                                        server_check_timer_(*this),
                                                                                        server_check_client_send_entries_(std::make_shared<std::deque<std::shared_ptr<impl::send_entry>>>()) {
-    io_service_thread_ = std::thread([this] {
-      (this->io_service_).run();
-    });
   }
 
-  virtual ~server_impl(void) {
+  ~server_impl(void) {
     async_close();
 
-    if (io_service_thread_.joinable()) {
-      work_ = nullptr;
-
-      io_service_thread_.join();
-    }
-
-    detach_from_dispatcher();
+    terminate_base_impl();
   }
 
   void async_bind(const std::string& path,
@@ -228,7 +219,6 @@ private:
     }
   }
 
-  std::thread io_service_thread_;
   bool bound_;
   std::string bound_path_;
 

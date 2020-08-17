@@ -36,23 +36,12 @@ public:
                                                                                        send_deadline_(io_service_, asio_helper::time_point::pos_infin()),
                                                                                        connected_(false),
                                                                                        server_check_timer_(*this) {
-    io_service_thread_ = std::thread([this] {
-      this->io_service_.run();
-    });
   }
 
-  virtual ~client_impl(void) {
+  ~client_impl(void) {
     async_close();
 
-    io_service_.post([this] {
-      work_ = nullptr;
-    });
-
-    if (io_service_thread_.joinable()) {
-      io_service_thread_.join();
-    }
-
-    detach_from_dispatcher();
+    terminate_base_impl();
   }
 
   void async_connect(const std::string& path,
@@ -340,7 +329,6 @@ private:
 
   asio::steady_timer send_invoker_;
   asio::steady_timer send_deadline_;
-  std::thread io_service_thread_;
   bool connected_;
 
   dispatcher::extra::timer server_check_timer_;
