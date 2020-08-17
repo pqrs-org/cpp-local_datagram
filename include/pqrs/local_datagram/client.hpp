@@ -31,11 +31,11 @@ public:
          size_t buffer_size) : dispatcher_client(weak_dispatcher),
                                path_(path),
                                buffer_size_(buffer_size),
-                               send_entries_(std::make_shared<std::deque<std::shared_ptr<impl::send_entry>>>()),
+                               client_send_entries_(std::make_shared<std::deque<std::shared_ptr<impl::send_entry>>>()),
                                reconnect_timer_(*this) {
     client_impl_ = std::make_shared<impl::client_impl>(
         weak_dispatcher_,
-        send_entries_);
+        client_send_entries_);
 
     client_impl_->connected.connect([this] {
       enqueue_to_dispatcher([this] {
@@ -183,7 +183,7 @@ private:
   size_t buffer_size_;
   std::optional<std::chrono::milliseconds> server_check_interval_;
   std::optional<std::chrono::milliseconds> reconnect_interval_;
-  std::shared_ptr<std::deque<std::shared_ptr<impl::send_entry>>> send_entries_;
+  std::shared_ptr<std::deque<std::shared_ptr<impl::send_entry>>> client_send_entries_;
   std::shared_ptr<impl::client_impl> client_impl_;
   dispatcher::extra::timer reconnect_timer_;
 };

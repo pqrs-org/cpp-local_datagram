@@ -6,6 +6,7 @@
 
 // `pqrs::local_datagram::impl::server_impl` can be used safely in a multi-threaded environment.
 
+#include "base_impl.hpp"
 #include "client_impl.hpp"
 #include <nod/nod.hpp>
 #include <pqrs/dispatcher.hpp>
@@ -14,7 +15,7 @@
 namespace pqrs {
 namespace local_datagram {
 namespace impl {
-class server_impl final : public dispatcher::extra::dispatcher_client {
+class server_impl final : public base_impl {
 public:
   // Signals (invoked from the dispatcher thread)
 
@@ -27,13 +28,14 @@ public:
 
   server_impl(const server_impl&) = delete;
 
-  server_impl(std::weak_ptr<dispatcher::dispatcher> weak_dispatcher) : dispatcher_client(weak_dispatcher),
-                                                                       io_service_(),
-                                                                       work_(std::make_unique<asio::io_service::work>(io_service_)),
-                                                                       socket_(std::make_unique<asio::local::datagram_protocol::socket>(io_service_)),
-                                                                       bound_(false),
-                                                                       server_check_timer_(*this),
-                                                                       server_check_client_send_entries_(std::make_shared<std::deque<std::shared_ptr<impl::send_entry>>>()) {
+  server_impl(std::weak_ptr<dispatcher::dispatcher> weak_dispatcher,
+              std::shared_ptr<std::deque<std::shared_ptr<send_entry>>> send_entries) : base_impl(weak_dispatcher, send_entries),
+                                                                                       io_service_(),
+                                                                                       work_(std::make_unique<asio::io_service::work>(io_service_)),
+                                                                                       socket_(std::make_unique<asio::local::datagram_protocol::socket>(io_service_)),
+                                                                                       bound_(false),
+                                                                                       server_check_timer_(*this),
+                                                                                       server_check_client_send_entries_(std::make_shared<std::deque<std::shared_ptr<impl::send_entry>>>()) {
     io_service_thread_ = std::thread([this] {
       (this->io_service_).run();
     });

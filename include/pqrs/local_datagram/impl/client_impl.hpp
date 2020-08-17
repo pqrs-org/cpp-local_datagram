@@ -7,6 +7,7 @@
 // `pqrs::local_datagram::impl::client_impl` can be used safely in a multi-threaded environment.
 
 #include "asio_helper.hpp"
+#include "base_impl.hpp"
 #include "send_entry.hpp"
 #include <deque>
 #include <nod/nod.hpp>
@@ -16,7 +17,7 @@
 namespace pqrs {
 namespace local_datagram {
 namespace impl {
-class client_impl final : public dispatcher::extra::dispatcher_client {
+class client_impl final : public base_impl {
 public:
   // Signals (invoked from the dispatcher thread)
 
@@ -30,10 +31,9 @@ public:
   client_impl(const client_impl&) = delete;
 
   client_impl(std::weak_ptr<dispatcher::dispatcher> weak_dispatcher,
-              std::shared_ptr<std::deque<std::shared_ptr<send_entry>>> send_entries) : dispatcher_client(weak_dispatcher),
+              std::shared_ptr<std::deque<std::shared_ptr<send_entry>>> send_entries) : base_impl(weak_dispatcher, send_entries),
                                                                                        io_service_(),
                                                                                        work_(std::make_unique<asio::io_service::work>(io_service_)),
-                                                                                       send_entries_(send_entries),
                                                                                        send_invoker_(io_service_, asio_helper::time_point::pos_infin()),
                                                                                        send_deadline_(io_service_, asio_helper::time_point::pos_infin()),
                                                                                        connected_(false),
@@ -343,7 +343,6 @@ private:
   asio::io_service io_service_;
   std::unique_ptr<asio::io_service::work> work_;
   std::unique_ptr<asio::local::datagram_protocol::socket> socket_;
-  std::shared_ptr<std::deque<std::shared_ptr<send_entry>>> send_entries_;
   asio::steady_timer send_invoker_;
   asio::steady_timer send_deadline_;
   std::thread io_service_thread_;
