@@ -34,11 +34,10 @@ public:
                                                                                        io_service_(),
                                                                                        work_(std::make_unique<asio::io_service::work>(io_service_)),
                                                                                        send_entries_(send_entries),
-                                                                                       send_invoker_(io_service_),
+                                                                                       send_invoker_(io_service_, asio_helper::time_point::pos_infin()),
+                                                                                       send_deadline_(io_service_, asio_helper::time_point::pos_infin()),
                                                                                        connected_(false),
                                                                                        server_check_timer_(*this) {
-    send_invoker_.expires_at(asio_helper::time_point::pos_infin());
-
     io_service_thread_ = std::thread([this] {
       this->io_service_.run();
     });
@@ -109,6 +108,10 @@ public:
 
                                  // Flush send_entries_.
                                  await_entry(std::nullopt);
+
+                                 // Enable send_deadline_.
+                                 send_deadline_.expires_at(asio_helper::time_point::pos_infin());
+                                 check_deadline();
                                }
                              });
     });
@@ -132,6 +135,7 @@ public:
       socket_ = nullptr;
 
       send_invoker_.cancel();
+      send_deadline_.cancel();
 
       // Signal
 
@@ -204,6 +208,8 @@ private:
     } else {
       auto entry = send_entries_->front();
 
+      send_deadline_.expires_after(std::chrono::milliseconds(5000));
+
       socket_->async_send(
           entry->make_buffer(),
           [this, entry](const auto& error_code, auto bytes_transferred) {
@@ -219,6 +225,8 @@ private:
     std::optional<std::chrono::milliseconds> next_delay;
 
     entry->add_bytes_transferred(bytes_transferred);
+
+    send_deadline_.expires_at(asio_helper::time_point::pos_infin());
 
     //
     // Handle error.
@@ -300,6 +308,7 @@ private:
     await_entry(next_delay);
   }
 
+  // This method is executed in `io_service_thread_`.
   void pop_front_send_entry(void) {
     if (send_entries_->empty()) {
       return;
@@ -313,11 +322,30 @@ private:
     send_entries_->pop_front();
   }
 
+  // This method is executed in `io_service_thread_`.
+  void check_deadline(void) {
+    if (!socket_ ||
+        !connected_) {
+      return;
+    }
+
+    if (send_deadline_.expiry() < asio_helper::time_point::now()) {
+      // The deadline has passed.
+      async_close();
+    } else {
+      send_deadline_.async_wait(
+          [this](const auto& error_code) {
+            check_deadline();
+          });
+    }
+  }
+
   asio::io_service io_service_;
   std::unique_ptr<asio::io_service::work> work_;
   std::unique_ptr<asio::local::datagram_protocol::socket> socket_;
   std::shared_ptr<std::deque<std::shared_ptr<send_entry>>> send_entries_;
   asio::steady_timer send_invoker_;
+  asio::steady_timer send_deadline_;
   std::thread io_service_thread_;
   bool connected_;
 
