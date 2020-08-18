@@ -20,6 +20,7 @@ class base_impl : public dispatcher::extra::dispatcher_client {
 public:
   // Signals (invoked from the dispatcher thread)
 
+  nod::signal<void(std::shared_ptr<std::vector<uint8_t>>)> received;
   nod::signal<void(void)> closed;
   nod::signal<void(const asio::error_code&)> error_occurred;
 
@@ -100,6 +101,46 @@ public:
     });
   }
 
+#pragma region server
+
+  // This method is executed in `io_service_thread_`.
+  void async_receive(void) {
+    if (!socket_ ||
+        !socket_ready_) {
+      return;
+    }
+
+    socket_->async_receive(asio::buffer(receive_buffer_),
+                           [this](auto&& error_code, auto&& bytes_transferred) {
+                             if (!error_code) {
+                               if (bytes_transferred > 0) {
+                                 auto t = send_entry::type(receive_buffer_[0]);
+                                 if (t == send_entry::type::user_data) {
+                                   auto v = std::make_shared<std::vector<uint8_t>>(bytes_transferred - 1);
+                                   std::copy(std::begin(receive_buffer_) + 1,
+                                             std::begin(receive_buffer_) + bytes_transferred,
+                                             std::begin(*v));
+
+                                   enqueue_to_dispatcher([this, v] {
+                                     received(v);
+                                   });
+                                 }
+                               }
+                             }
+
+                             // receive once if not closed
+
+                             if (socket_ready_) {
+                               async_receive();
+                             }
+                           });
+  }
+
+#pragma endregion
+
+#pragma region sender
+
+public:
   void async_send(std::shared_ptr<send_entry> entry) {
     if (!entry) {
       return;
@@ -273,6 +314,8 @@ protected:
     }
   }
 
+#pragma endregion
+
   // External variables
   std::shared_ptr<std::deque<std::shared_ptr<send_entry>>> send_entries_;
 
@@ -285,6 +328,7 @@ protected:
 
   // Server
   std::string bound_path_;
+  std::vector<uint8_t> receive_buffer_;
 
   // Sender
   asio::steady_timer send_invoker_;

@@ -21,7 +21,6 @@ public:
 
   nod::signal<void(void)> bound;
   nod::signal<void(const asio::error_code&)> bind_failed;
-  nod::signal<void(std::shared_ptr<std::vector<uint8_t>>)> received;
 
   // Methods
 
@@ -105,39 +104,6 @@ public:
 
 private:
   // This method is executed in `io_service_thread_`.
-  void async_receive(void) {
-    if (!socket_ ||
-        !socket_ready_) {
-      return;
-    }
-
-    socket_->async_receive(asio::buffer(receive_buffer_),
-                           [this](auto&& error_code, auto&& bytes_transferred) {
-                             if (!error_code) {
-                               if (bytes_transferred > 0) {
-                                 auto t = send_entry::type(receive_buffer_[0]);
-                                 if (t == send_entry::type::user_data) {
-                                   auto v = std::make_shared<std::vector<uint8_t>>(bytes_transferred - 1);
-                                   std::copy(std::begin(receive_buffer_) + 1,
-                                             std::begin(receive_buffer_) + bytes_transferred,
-                                             std::begin(*v));
-
-                                   enqueue_to_dispatcher([this, v] {
-                                     received(v);
-                                   });
-                                 }
-                               }
-                             }
-
-                             // receive once if not closed
-
-                             if (socket_ready_) {
-                               async_receive();
-                             }
-                           });
-  }
-
-  // This method is executed in `io_service_thread_`.
   void start_server_check(const std::string& path,
                           std::optional<std::chrono::milliseconds> server_check_interval) {
     if (server_check_interval) {
@@ -183,8 +149,6 @@ private:
       server_check_client_impl_->async_connect(path, buffer_size, std::nullopt);
     }
   }
-
-  std::vector<uint8_t> receive_buffer_;
 
   dispatcher::extra::timer server_check_timer_;
   std::unique_ptr<client_impl> server_check_client_impl_;
