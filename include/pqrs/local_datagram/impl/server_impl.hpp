@@ -67,7 +67,8 @@ public:
 
       // A margin (32 byte) is required to receive data which size == buffer_size.
       size_t buffer_margin = 32;
-      socket_->set_option(asio::socket_base::receive_buffer_size(buffer_size + buffer_margin));
+      receive_buffer_.resize(buffer_size + buffer_margin);
+      socket_->set_option(asio::socket_base::receive_buffer_size(receive_buffer_.size()));
 
       // Bind
 
@@ -98,7 +99,6 @@ public:
 
       // Receive
 
-      buffer_.resize(buffer_size + buffer_margin);
       async_receive();
     });
   }
@@ -111,15 +111,15 @@ private:
       return;
     }
 
-    socket_->async_receive(asio::buffer(buffer_),
+    socket_->async_receive(asio::buffer(receive_buffer_),
                            [this](auto&& error_code, auto&& bytes_transferred) {
                              if (!error_code) {
                                if (bytes_transferred > 0) {
-                                 auto t = send_entry::type(buffer_[0]);
+                                 auto t = send_entry::type(receive_buffer_[0]);
                                  if (t == send_entry::type::user_data) {
                                    auto v = std::make_shared<std::vector<uint8_t>>(bytes_transferred - 1);
-                                   std::copy(std::begin(buffer_) + 1,
-                                             std::begin(buffer_) + bytes_transferred,
+                                   std::copy(std::begin(receive_buffer_) + 1,
+                                             std::begin(receive_buffer_) + bytes_transferred,
                                              std::begin(*v));
 
                                    enqueue_to_dispatcher([this, v] {
@@ -184,7 +184,7 @@ private:
     }
   }
 
-  std::vector<uint8_t> buffer_;
+  std::vector<uint8_t> receive_buffer_;
 
   dispatcher::extra::timer server_check_timer_;
   std::unique_ptr<client_impl> server_check_client_impl_;
