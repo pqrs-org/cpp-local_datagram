@@ -21,7 +21,6 @@ public:
 
   nod::signal<void(void)> bound;
   nod::signal<void(const asio::error_code&)> bind_failed;
-  nod::signal<void(void)> closed;
   nod::signal<void(std::shared_ptr<std::vector<uint8_t>>)> received;
 
   // Methods
@@ -30,7 +29,6 @@ public:
 
   server_impl(std::weak_ptr<dispatcher::dispatcher> weak_dispatcher,
               std::shared_ptr<std::deque<std::shared_ptr<send_entry>>> send_entries) : base_impl(weak_dispatcher, send_entries),
-                                                                                       bound_(false),
                                                                                        server_check_timer_(*this),
                                                                                        server_check_client_send_entries_(std::make_shared<std::deque<std::shared_ptr<impl::send_entry>>>()) {
   }
@@ -47,8 +45,7 @@ public:
     async_close();
 
     io_service_.post([this, path, buffer_size, server_check_interval] {
-      bound_ = false;
-      bound_path_.clear();
+      socket_ready_ = false;
 
       // Open
 
@@ -89,7 +86,7 @@ public:
 
       // Signal
 
-      bound_ = true;
+      socket_ready_ = true;
       bound_path_ = path;
 
       start_server_check(path,
@@ -106,46 +103,11 @@ public:
     });
   }
 
-  void async_close(void) {
-    io_service_.post([this] {
-      close();
-    });
-  }
-
 private:
-  // This method is executed in `io_service_thread_`.
-  void close(void) {
-    if (!socket_) {
-      return;
-    }
-
-    stop_server_check();
-
-    // Close socket
-
-    asio::error_code error_code;
-
-    socket_->cancel(error_code);
-    socket_->close(error_code);
-
-    socket_ = nullptr;
-
-    // Signal
-
-    if (bound_) {
-      bound_ = false;
-      unlink(bound_path_.c_str());
-
-      enqueue_to_dispatcher([this] {
-        closed();
-      });
-    }
-  }
-
   // This method is executed in `io_service_thread_`.
   void async_receive(void) {
     if (!socket_ ||
-        !bound_) {
+        !socket_ready_) {
       return;
     }
 
@@ -169,7 +131,7 @@ private:
 
                              // receive once if not closed
 
-                             if (bound_) {
+                             if (socket_ready_) {
                                async_receive();
                              }
                            });
@@ -197,6 +159,11 @@ private:
 
   // This method is executed in `io_service_thread_`.
   void check_server(const std::string& path) {
+    if (!socket_ ||
+        !socket_ready_) {
+      stop_server_check();
+    }
+
     if (!server_check_client_impl_) {
       server_check_client_impl_ = std::make_unique<client_impl>(
           weak_dispatcher_,
@@ -209,18 +176,13 @@ private:
       });
 
       server_check_client_impl_->connect_failed.connect([this](auto&& error_code) {
-        io_service_.post([this] {
-          close();
-        });
+        async_close();
       });
 
       size_t buffer_size = 32;
       server_check_client_impl_->async_connect(path, buffer_size, std::nullopt);
     }
   }
-
-  bool bound_;
-  std::string bound_path_;
 
   std::vector<uint8_t> buffer_;
 
