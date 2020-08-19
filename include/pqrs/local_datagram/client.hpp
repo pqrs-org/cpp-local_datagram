@@ -21,15 +21,18 @@ public:
   nod::signal<void(const asio::error_code&)> connect_failed;
   nod::signal<void(void)> closed;
   nod::signal<void(const asio::error_code&)> error_occurred;
+  nod::signal<void(std::shared_ptr<std::vector<uint8_t>>, std::shared_ptr<asio::local::datagram_protocol::endpoint>)> received;
 
   // Methods
 
   client(const client&) = delete;
 
   client(std::weak_ptr<dispatcher::dispatcher> weak_dispatcher,
-         const std::string& path,
+         const std::string& server_socket_file_path,
+         const std::optional<std::string>& client_socket_file_path,
          size_t buffer_size) : dispatcher_client(weak_dispatcher),
-                               path_(path),
+                               server_socket_file_path_(server_socket_file_path),
+                               client_socket_file_path_(client_socket_file_path),
                                buffer_size_(buffer_size),
                                client_send_entries_(std::make_shared<std::deque<std::shared_ptr<impl::send_entry>>>()),
                                reconnect_timer_(*this) {
@@ -68,6 +71,12 @@ public:
         error_occurred(error_code);
       });
     });
+
+    client_impl_->received.connect([this](auto&& buffer, auto&& sender_endpoint) {
+      enqueue_to_dispatcher([this, buffer, sender_endpoint] {
+        received(buffer, sender_endpoint);
+      });
+    });
   }
 
   virtual ~client(void) {
@@ -102,6 +111,7 @@ public:
                   const std::function<void(void)>& processed = nullptr) {
     auto entry = std::make_shared<impl::send_entry>(impl::send_entry::type::user_data,
                                                     v,
+                                                    nullptr,
                                                     processed);
     async_send(entry);
   }
@@ -112,6 +122,7 @@ public:
     auto entry = std::make_shared<impl::send_entry>(impl::send_entry::type::user_data,
                                                     p,
                                                     length,
+                                                    nullptr,
                                                     processed);
     async_send(entry);
   }
@@ -128,7 +139,8 @@ private:
   // This method is executed in the dispatcher thread.
   void connect(void) {
     if (client_impl_) {
-      client_impl_->async_connect(path_,
+      client_impl_->async_connect(server_socket_file_path_,
+                                  client_socket_file_path_,
                                   buffer_size_,
                                   server_check_interval_);
     }
@@ -179,7 +191,8 @@ private:
     });
   }
 
-  std::string path_;
+  std::string server_socket_file_path_;
+  std::optional<std::string> client_socket_file_path_;
   size_t buffer_size_;
   std::optional<std::chrono::milliseconds> server_check_interval_;
   std::optional<std::chrono::milliseconds> reconnect_interval_;

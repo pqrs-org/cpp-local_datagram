@@ -4,7 +4,24 @@
 
 namespace {
 auto global_wait = pqrs::make_thread_wait();
+
+void output_received_data(std::shared_ptr<std::vector<uint8_t>> buffer) {
+  if (!buffer->empty()) {
+    std::cout << "buffer: `";
+    int count = 0;
+    for (const auto& c : *buffer) {
+      std::cout << c;
+      ++count;
+      if (count > 40) {
+        std::cout << "... (" << buffer->size() << "bytes)";
+        break;
+      }
+    }
+    std::cout << "`";
+    std::cout << std::endl;
+  }
 }
+} // namespace
 
 int main(void) {
   std::signal(SIGINT, [](int) {
@@ -14,13 +31,15 @@ int main(void) {
   auto time_source = std::make_shared<pqrs::dispatcher::hardware_time_source>();
   auto dispatcher = std::make_shared<pqrs::dispatcher::dispatcher>(time_source);
 
-  std::string socket_file_path("tmp/server.sock");
-  unlink(socket_file_path.c_str());
+  std::string server_socket_file_path("tmp/server.sock");
+  std::string client_socket_file_path("tmp/client.sock");
+  unlink(server_socket_file_path.c_str());
+  unlink(client_socket_file_path.c_str());
 
   // server
   size_t server_buffer_size = 32 * 1024;
   auto server = std::make_shared<pqrs::local_datagram::server>(dispatcher,
-                                                               socket_file_path,
+                                                               server_socket_file_path,
                                                                server_buffer_size);
   server->set_server_check_interval(std::chrono::milliseconds(3000));
   server->set_reconnect_interval(std::chrono::milliseconds(1000));
@@ -34,23 +53,13 @@ int main(void) {
   server->closed.connect([] {
     std::cout << "server closed" << std::endl;
   });
-  server->received.connect([](auto&& buffer) {
+  server->received.connect([&server](auto&& buffer, auto&& sender_endpoint) {
     std::cout << "server received size:" << buffer->size() << std::endl;
+    output_received_data(buffer);
 
-    if (!buffer->empty()) {
-      std::cout << "buffer: `";
-      int count = 0;
-      for (const auto& c : *buffer) {
-        std::cout << c;
-        ++count;
-        if (count > 40) {
-          std::cout << "... (" << buffer->size() << "bytes)";
-          break;
-        }
-      }
-      std::cout << "`";
-      std::cout << std::endl;
-    }
+    std::cout << *sender_endpoint << std::endl;
+
+    server->async_send(*buffer, sender_endpoint);
   });
 
   server->async_start();
@@ -59,7 +68,8 @@ int main(void) {
 
   size_t client_buffer_size = 64 * 1024;
   auto client = std::make_shared<pqrs::local_datagram::client>(dispatcher,
-                                                               socket_file_path,
+                                                               server_socket_file_path,
+                                                               client_socket_file_path,
                                                                client_buffer_size);
   client->set_server_check_interval(std::chrono::milliseconds(3000));
   client->set_reconnect_interval(std::chrono::milliseconds(1000));
@@ -79,6 +89,10 @@ int main(void) {
   });
   client->error_occurred.connect([](auto&& error_code) {
     std::cout << "client error_occurred:" << error_code.message() << std::endl;
+  });
+  client->received.connect([](auto&& buffer, auto&& sender_endpoint) {
+    std::cout << "client received size:" << buffer->size() << std::endl;
+    output_received_data(buffer);
   });
 
   client->async_start();

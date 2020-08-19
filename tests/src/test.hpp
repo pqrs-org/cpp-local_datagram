@@ -44,7 +44,7 @@ public:
       closed_ = true;
     });
 
-    server_->received.connect([this](auto&& buffer) {
+    server_->received.connect([this](auto&& buffer, auto&& sender_endpoint) {
       std::cout << "server received size:" << buffer->size() << std::endl;
 
       received_count_ += buffer->size();
@@ -94,6 +94,7 @@ public:
 
     client_ = std::make_unique<pqrs::local_datagram::client>(weak_dispatcher,
                                                              socket_path,
+                                                             std::nullopt,
                                                              server_buffer_size);
     client_->set_server_check_interval(server_check_interval);
     client_->set_reconnect_interval(reconnect_interval);

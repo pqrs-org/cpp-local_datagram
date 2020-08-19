@@ -17,17 +17,14 @@ namespace local_datagram {
 namespace impl {
 class server_impl final : public base_impl {
 public:
-  // Signals (invoked from the dispatcher thread)
-
-  nod::signal<void(void)> bound;
-  nod::signal<void(const asio::error_code&)> bind_failed;
-
   // Methods
 
   server_impl(const server_impl&) = delete;
 
   server_impl(std::weak_ptr<dispatcher::dispatcher> weak_dispatcher,
-              std::shared_ptr<std::deque<std::shared_ptr<send_entry>>> send_entries) : base_impl(weak_dispatcher, send_entries),
+              std::shared_ptr<std::deque<std::shared_ptr<send_entry>>> send_entries) : base_impl(weak_dispatcher,
+                                                                                                 base_impl::mode::server,
+                                                                                                 send_entries),
                                                                                        server_check_timer_(*this),
                                                                                        server_check_client_send_entries_(std::make_shared<std::deque<std::shared_ptr<impl::send_entry>>>()) {
   }
@@ -38,12 +35,12 @@ public:
     terminate_base_impl();
   }
 
-  void async_bind(const std::string& path,
+  void async_bind(const std::string& server_socket_file_path,
                   size_t buffer_size,
                   std::optional<std::chrono::milliseconds> server_check_interval) {
     async_close();
 
-    io_service_.post([this, path, buffer_size, server_check_interval] {
+    io_service_.post([this, server_socket_file_path, buffer_size, server_check_interval] {
       socket_ready_ = false;
 
       // Open
@@ -62,18 +59,13 @@ public:
         }
       }
 
-      // Set options
-
-      // A margin (32 byte) is required to receive data which size == buffer_size.
-      size_t buffer_margin = 32;
-      receive_buffer_.resize(buffer_size + buffer_margin);
-      socket_->set_option(asio::socket_base::receive_buffer_size(receive_buffer_.size()));
+      set_socket_options(buffer_size);
 
       // Bind
 
       {
         asio::error_code error_code;
-        socket_->bind(asio::local::datagram_protocol::endpoint(path),
+        socket_->bind(asio::local::datagram_protocol::endpoint(server_socket_file_path),
                       error_code);
 
         if (error_code) {
@@ -87,30 +79,28 @@ public:
       // Signal
 
       socket_ready_ = true;
-      bound_path_ = path;
+      bound_path_ = server_socket_file_path;
 
-      start_server_check(path,
+      start_server_check(server_socket_file_path,
                          server_check_interval);
 
       enqueue_to_dispatcher([this] {
         bound();
       });
 
-      // Receive
-
-      async_receive();
+      start_actors();
     });
   }
 
 private:
   // This method is executed in `io_service_thread_`.
-  void start_server_check(const std::string& path,
+  void start_server_check(const std::string& server_socket_file_path,
                           std::optional<std::chrono::milliseconds> server_check_interval) {
     if (server_check_interval) {
       server_check_timer_.start(
-          [this, path] {
-            io_service_.post([this, path] {
-              check_server(path);
+          [this, server_socket_file_path] {
+            io_service_.post([this, server_socket_file_path] {
+              check_server(server_socket_file_path);
             });
           },
           *server_check_interval);
@@ -124,7 +114,7 @@ private:
   }
 
   // This method is executed in `io_service_thread_`.
-  void check_server(const std::string& path) {
+  void check_server(const std::string& server_socket_file_path) {
     if (!socket_ ||
         !socket_ready_) {
       stop_server_check();
@@ -146,7 +136,10 @@ private:
       });
 
       size_t buffer_size = 32;
-      server_check_client_impl_->async_connect(path, buffer_size, std::nullopt);
+      server_check_client_impl_->async_connect(server_socket_file_path,
+                                               std::nullopt,
+                                               buffer_size,
+                                               std::nullopt);
     }
   }
 

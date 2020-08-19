@@ -20,15 +20,24 @@ class base_impl : public dispatcher::extra::dispatcher_client {
 public:
   // Signals (invoked from the dispatcher thread)
 
-  nod::signal<void(std::shared_ptr<std::vector<uint8_t>>)> received;
+  nod::signal<void(void)> bound;
+  nod::signal<void(const asio::error_code&)> bind_failed;
+  nod::signal<void(std::shared_ptr<std::vector<uint8_t>>, std::shared_ptr<asio::local::datagram_protocol::endpoint> sender_endpoint)> received;
   nod::signal<void(void)> closed;
   nod::signal<void(const asio::error_code&)> error_occurred;
+
+  enum class mode {
+    server,
+    client,
+  };
 
 protected:
   base_impl(const base_impl&) = delete;
 
   base_impl(std::weak_ptr<dispatcher::dispatcher> weak_dispatcher,
+            mode mode,
             std::shared_ptr<std::deque<std::shared_ptr<send_entry>>> send_entries) : dispatcher_client(weak_dispatcher),
+                                                                                     mode_(mode),
                                                                                      send_entries_(send_entries),
                                                                                      io_service_(),
                                                                                      work_(std::make_unique<asio::io_service::work>(io_service_)),
@@ -63,6 +72,47 @@ protected:
     //
 
     detach_from_dispatcher();
+  }
+
+  void set_socket_options(size_t buffer_size) {
+    if (!socket_) {
+      return;
+    }
+
+    //
+    // receive options
+    //
+
+    // A margin (32 byte) is required to receive data which size == buffer_size.
+    size_t buffer_margin = 32;
+    receive_buffer_.resize(buffer_size + buffer_margin);
+    socket_->set_option(asio::socket_base::receive_buffer_size(receive_buffer_.size()));
+
+    //
+    // send options
+    //
+
+    // A margin (1 byte) is required to append send_entry::type.
+    socket_->set_option(asio::socket_base::send_buffer_size(buffer_size + 1));
+  }
+
+  void start_actors(void) {
+    //
+    // Sender
+    //
+
+    await_send_entry(std::nullopt);
+
+    send_deadline_.expires_at(asio_helper::time_point::pos_infin());
+    if (mode_ == mode::client) {
+      check_send_deadline();
+    }
+
+    //
+    // Receiver
+    //
+
+    async_receive();
   }
 
 public:
@@ -110,30 +160,33 @@ public:
       return;
     }
 
-    socket_->async_receive(asio::buffer(receive_buffer_),
-                           [this](auto&& error_code, auto&& bytes_transferred) {
-                             if (!error_code) {
-                               if (bytes_transferred > 0) {
-                                 auto t = send_entry::type(receive_buffer_[0]);
-                                 if (t == send_entry::type::user_data) {
-                                   auto v = std::make_shared<std::vector<uint8_t>>(bytes_transferred - 1);
-                                   std::copy(std::begin(receive_buffer_) + 1,
-                                             std::begin(receive_buffer_) + bytes_transferred,
-                                             std::begin(*v));
+    socket_->async_receive_from(asio::buffer(receive_buffer_),
+                                receive_sender_endpoint_,
+                                [this](auto&& error_code, auto&& bytes_transferred) {
+                                  if (!error_code) {
+                                    if (bytes_transferred > 0) {
+                                      auto t = send_entry::type(receive_buffer_[0]);
+                                      if (t == send_entry::type::user_data) {
+                                        auto v = std::make_shared<std::vector<uint8_t>>(bytes_transferred - 1);
+                                        std::copy(std::begin(receive_buffer_) + 1,
+                                                  std::begin(receive_buffer_) + bytes_transferred,
+                                                  std::begin(*v));
 
-                                   enqueue_to_dispatcher([this, v] {
-                                     received(v);
-                                   });
-                                 }
-                               }
-                             }
+                                        auto sender_endpoint = std::make_shared<asio::local::datagram_protocol::endpoint>(receive_sender_endpoint_);
 
-                             // receive once if not closed
+                                        enqueue_to_dispatcher([this, v, sender_endpoint] {
+                                          received(v, sender_endpoint);
+                                        });
+                                      }
+                                    }
+                                  }
 
-                             if (socket_ready_) {
-                               async_receive();
-                             }
-                           });
+                                  // receive once if not closed
+
+                                  if (socket_ready_) {
+                                    async_receive();
+                                  }
+                                });
   }
 
 #pragma endregion
@@ -179,14 +232,24 @@ protected:
 
     } else {
       auto entry = send_entries_->front();
+      auto destination_endpoint = entry->get_destination_endpoint();
 
       send_deadline_.expires_after(std::chrono::milliseconds(5000));
 
-      socket_->async_send(
-          entry->make_buffer(),
-          [this, entry](const auto& error_code, auto bytes_transferred) {
-            handle_send(error_code, bytes_transferred, entry);
-          });
+      if (destination_endpoint) {
+        socket_->async_send_to(
+            entry->make_buffer(),
+            *destination_endpoint,
+            [this, entry](const auto& error_code, auto bytes_transferred) {
+              handle_send(error_code, bytes_transferred, entry);
+            });
+      } else {
+        socket_->async_send(
+            entry->make_buffer(),
+            [this, entry](const auto& error_code, auto bytes_transferred) {
+              handle_send(error_code, bytes_transferred, entry);
+            });
+      }
     }
   }
 
@@ -261,12 +324,17 @@ protected:
       // - Keep the entry.
       //
 
-      enqueue_to_dispatcher([this, error_code] {
-        error_occurred(error_code);
-      });
+      // Ignore error if server mode.
+      if (mode_ == mode::server) {
+        entry->add_bytes_transferred(entry->rest_bytes());
+      } else {
+        enqueue_to_dispatcher([this, error_code] {
+          error_occurred(error_code);
+        });
 
-      async_close();
-      return;
+        async_close();
+        return;
+      }
     }
 
     //
@@ -305,18 +373,21 @@ protected:
 
     if (send_deadline_.expiry() < asio_helper::time_point::now()) {
       // The deadline has passed.
+
       async_close();
-    } else {
-      send_deadline_.async_wait(
-          [this](const auto& error_code) {
-            check_send_deadline();
-          });
+      return;
     }
+
+    send_deadline_.async_wait(
+        [this](const auto& error_code) {
+          check_send_deadline();
+        });
   }
 
 #pragma endregion
 
   // External variables
+  mode mode_;
   std::shared_ptr<std::deque<std::shared_ptr<send_entry>>> send_entries_;
 
   // asio
@@ -329,6 +400,7 @@ protected:
   // Server
   std::string bound_path_;
   std::vector<uint8_t> receive_buffer_;
+  asio::local::datagram_protocol::endpoint receive_sender_endpoint_;
 
   // Sender
   asio::steady_timer send_invoker_;

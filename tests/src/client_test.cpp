@@ -17,6 +17,7 @@ TEST_CASE("local_datagram::client") {
 
     auto client = std::make_unique<pqrs::local_datagram::client>(dispatcher,
                                                                  socket_path,
+                                                                 std::nullopt,
                                                                  server_buffer_size);
     client->set_server_check_interval(server_check_interval);
     client->set_reconnect_interval(std::chrono::milliseconds(100));
@@ -145,6 +146,7 @@ TEST_CASE("local_datagram::client large_buffer") {
 
     auto client = std::make_unique<pqrs::local_datagram::client>(dispatcher,
                                                                  socket_path,
+                                                                 std::nullopt,
                                                                  server_buffer_size);
 
     client->error_occurred.connect([&](auto&& error_code) {
@@ -200,6 +202,7 @@ TEST_CASE("local_datagram::client large_buffer") {
     size_t client_buffer_size = server_buffer_size + 32;
     auto client = std::make_unique<pqrs::local_datagram::client>(dispatcher,
                                                                  socket_path,
+                                                                 std::nullopt,
                                                                  client_buffer_size);
 
     client->error_occurred.connect([&](auto&& error_code) {
@@ -265,6 +268,7 @@ TEST_CASE("local_datagram::client processed") {
 
     auto client = std::make_unique<pqrs::local_datagram::client>(dispatcher,
                                                                  socket_path,
+                                                                 std::nullopt,
                                                                  server_buffer_size);
 
     client->async_start();
@@ -296,6 +300,7 @@ TEST_CASE("local_datagram::client processed") {
 
     auto client = std::make_unique<pqrs::local_datagram::client>(dispatcher,
                                                                  socket_path,
+                                                                 std::nullopt,
                                                                  server_buffer_size);
 
     client->error_occurred.connect([&](auto&& error_code) {

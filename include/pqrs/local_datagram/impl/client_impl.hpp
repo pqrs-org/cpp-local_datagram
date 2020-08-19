@@ -29,7 +29,9 @@ public:
   client_impl(const client_impl&) = delete;
 
   client_impl(std::weak_ptr<dispatcher::dispatcher> weak_dispatcher,
-              std::shared_ptr<std::deque<std::shared_ptr<send_entry>>> send_entries) : base_impl(weak_dispatcher, send_entries),
+              std::shared_ptr<std::deque<std::shared_ptr<send_entry>>> send_entries) : base_impl(weak_dispatcher,
+                                                                                                 base_impl::mode::client,
+                                                                                                 send_entries),
                                                                                        server_check_timer_(*this) {
   }
 
@@ -39,10 +41,12 @@ public:
     terminate_base_impl();
   }
 
-  void async_connect(const std::string& path,
+  // Set client_socket_file_path if you need bidirectional communication.
+  void async_connect(const std::string& server_socket_file_path,
+                     const std::optional<std::string>& client_socket_file_path,
                      size_t buffer_size,
                      std::optional<std::chrono::milliseconds> server_check_interval) {
-    io_service_.post([this, path, buffer_size, server_check_interval] {
+    io_service_.post([this, server_socket_file_path, client_socket_file_path, buffer_size, server_check_interval] {
       if (socket_) {
         return;
       }
@@ -64,14 +68,26 @@ public:
         }
       }
 
-      // Set options
+      set_socket_options(buffer_size);
 
-      // A margin (1 byte) is required to append send_entry::type.
-      socket_->set_option(asio::socket_base::send_buffer_size(buffer_size + 1));
+      // Bind
+
+      if (client_socket_file_path) {
+        asio::error_code error_code;
+        socket_->bind(asio::local::datagram_protocol::endpoint(*client_socket_file_path),
+                      error_code);
+
+        if (error_code) {
+          enqueue_to_dispatcher([this, error_code] {
+            bind_failed(error_code);
+          });
+          return;
+        }
+      }
 
       // Connect
 
-      socket_->async_connect(asio::local::datagram_protocol::endpoint(path),
+      socket_->async_connect(asio::local::datagram_protocol::endpoint(server_socket_file_path),
                              [this, server_check_interval](auto&& error_code) {
                                if (error_code) {
                                  enqueue_to_dispatcher([this, error_code] {
@@ -87,12 +103,7 @@ public:
                                    connected();
                                  });
 
-                                 // Flush send_entries_.
-                                 await_send_entry(std::nullopt);
-
-                                 // Enable send_deadline_.
-                                 send_deadline_.expires_at(asio_helper::time_point::pos_infin());
-                                 check_send_deadline();
+                                 start_actors();
                                }
                              });
     });
@@ -124,7 +135,7 @@ private:
       stop_server_check();
     }
 
-    auto b = std::make_shared<send_entry>(send_entry::type::server_check);
+    auto b = std::make_shared<send_entry>(send_entry::type::server_check, nullptr);
     async_send(b);
   }
 
