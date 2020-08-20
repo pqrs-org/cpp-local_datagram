@@ -3,9 +3,12 @@
 #include <iostream>
 #include <pqrs/local_datagram.hpp>
 
-const std::string socket_path("tmp/server.sock");
+namespace test_constants {
+const std::string server_socket_file_path("tmp/server.sock");
+const std::string client_socket_file_path("tmp/client.sock");
 const size_t server_buffer_size(32 * 1024);
 const std::chrono::milliseconds server_check_interval(100);
+} // namespace test_constants
 
 class test_server final {
 public:
@@ -14,12 +17,12 @@ public:
                                                                              received_count_(0) {
     auto wait = pqrs::make_thread_wait();
 
-    unlink(socket_path.c_str());
+    unlink(test_constants::server_socket_file_path.c_str());
 
     server_ = std::make_unique<pqrs::local_datagram::server>(weak_dispatcher,
-                                                             socket_path,
-                                                             server_buffer_size);
-    server_->set_server_check_interval(server_check_interval);
+                                                             test_constants::server_socket_file_path,
+                                                             test_constants::server_buffer_size);
+    server_->set_server_check_interval(test_constants::server_check_interval);
     server_->set_reconnect_interval(reconnect_interval);
 
     server_->bound.connect([this, wait] {
@@ -53,6 +56,11 @@ public:
         REQUIRE((*buffer)[0] == 10);
         REQUIRE((*buffer)[1] == 20);
         REQUIRE((*buffer)[2] == 30);
+      }
+
+      // echo
+      if (!sender_endpoint->path().empty()) {
+        server_->async_send(*buffer, sender_endpoint);
       }
     });
 
@@ -89,14 +97,21 @@ private:
 class test_client final {
 public:
   test_client(std::weak_ptr<pqrs::dispatcher::dispatcher> weak_dispatcher,
-              std::optional<std::chrono::milliseconds> reconnect_interval) : closed_(false) {
+              std::optional<std::chrono::milliseconds> reconnect_interval,
+              bool bidirectional) : closed_(false) {
     auto wait = pqrs::make_thread_wait();
 
+    std::optional<std::string> client_socket_file_path;
+    if (bidirectional) {
+      client_socket_file_path = test_constants::client_socket_file_path;
+      unlink(client_socket_file_path->c_str());
+    }
+
     client_ = std::make_unique<pqrs::local_datagram::client>(weak_dispatcher,
-                                                             socket_path,
-                                                             std::nullopt,
-                                                             server_buffer_size);
-    client_->set_server_check_interval(server_check_interval);
+                                                             test_constants::server_socket_file_path,
+                                                             client_socket_file_path,
+                                                             test_constants::server_buffer_size);
+    client_->set_server_check_interval(test_constants::server_check_interval);
     client_->set_reconnect_interval(reconnect_interval);
 
     client_->connected.connect([this, wait] {

@@ -9,17 +9,17 @@ TEST_CASE("socket file") {
   auto time_source = std::make_shared<pqrs::dispatcher::hardware_time_source>();
   auto dispatcher = std::make_shared<pqrs::dispatcher::dispatcher>(time_source);
 
-  unlink(socket_path.c_str());
-  REQUIRE(!pqrs::filesystem::exists(socket_path));
+  unlink(test_constants::server_socket_file_path.c_str());
+  REQUIRE(!pqrs::filesystem::exists(test_constants::server_socket_file_path));
 
   {
     auto server = std::make_shared<test_server>(dispatcher,
                                                 std::nullopt);
 
-    REQUIRE(pqrs::filesystem::exists(socket_path));
+    REQUIRE(pqrs::filesystem::exists(test_constants::server_socket_file_path));
   }
 
-  REQUIRE(!pqrs::filesystem::exists(socket_path));
+  REQUIRE(!pqrs::filesystem::exists(test_constants::server_socket_file_path));
 
   dispatcher->terminate();
   dispatcher = nullptr;
@@ -112,16 +112,18 @@ TEST_CASE("permission error") {
 
     {
       auto client = std::make_unique<test_client>(dispatcher,
-                                                  std::nullopt);
+                                                  std::nullopt,
+                                                  false);
       REQUIRE(client->get_connected() == true);
     }
 
     // ----
-    chmod(socket_path.c_str(), 0000);
+    chmod(test_constants::server_socket_file_path.c_str(), 0000);
 
     {
       auto client = std::make_unique<test_client>(dispatcher,
-                                                  std::nullopt);
+                                                  std::nullopt,
+                                                  false);
       REQUIRE(client->get_connected() == false);
     }
 
@@ -135,11 +137,12 @@ TEST_CASE("permission error") {
                                                 std::nullopt);
 
     // -r--
-    chmod(socket_path.c_str(), 0400);
+    chmod(test_constants::server_socket_file_path.c_str(), 0400);
 
     {
       auto client = std::make_unique<test_client>(dispatcher,
-                                                  std::nullopt);
+                                                  std::nullopt,
+                                                  false);
       REQUIRE(client->get_connected() == false);
     }
 
@@ -153,11 +156,12 @@ TEST_CASE("permission error") {
                                                 std::nullopt);
 
     // -rw-
-    chmod(socket_path.c_str(), 0600);
+    chmod(test_constants::server_socket_file_path.c_str(), 0600);
 
     {
       auto client = std::make_unique<test_client>(dispatcher,
-                                                  std::nullopt);
+                                                  std::nullopt,
+                                                  false);
       REQUIRE(client->get_connected() == true);
     }
 
@@ -179,7 +183,7 @@ TEST_CASE("close when socket erased") {
   auto server = std::make_unique<test_server>(dispatcher,
                                               std::nullopt);
 
-  unlink(socket_path.c_str());
+  unlink(test_constants::server_socket_file_path.c_str());
 
   std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
@@ -199,7 +203,8 @@ TEST_CASE("local_datagram::server") {
     auto server = std::make_unique<test_server>(dispatcher,
                                                 std::nullopt);
     auto client = std::make_unique<test_client>(dispatcher,
-                                                std::nullopt);
+                                                std::nullopt,
+                                                false);
 
     REQUIRE(client->get_connected() == true);
 
@@ -223,10 +228,11 @@ TEST_CASE("local_datagram::server") {
 
   // Send after server is destroyed.
   {
-    REQUIRE(!pqrs::filesystem::exists(socket_path));
+    REQUIRE(!pqrs::filesystem::exists(test_constants::server_socket_file_path));
 
     auto client = std::make_unique<test_client>(dispatcher,
-                                                std::nullopt);
+                                                std::nullopt,
+                                                false);
 
     REQUIRE(client->get_connected() == false);
 
@@ -240,7 +246,8 @@ TEST_CASE("local_datagram::server") {
   // Create client before server
   {
     auto client = std::make_unique<test_client>(dispatcher,
-                                                std::nullopt);
+                                                std::nullopt,
+                                                false);
 
     REQUIRE(client->get_connected() == false);
 
@@ -270,8 +277,8 @@ TEST_CASE("local_datagram::server reconnect") {
     size_t closed_count = 0;
 
     auto server = std::make_unique<pqrs::local_datagram::server>(dispatcher,
-                                                                 socket_path,
-                                                                 server_buffer_size);
+                                                                 test_constants::server_socket_file_path,
+                                                                 test_constants::server_buffer_size);
     server->set_server_check_interval(std::chrono::milliseconds(100));
     server->set_reconnect_interval(std::chrono::milliseconds(100));
 
@@ -301,7 +308,7 @@ TEST_CASE("local_datagram::server reconnect") {
     REQUIRE(bind_failed_count == 0);
     REQUIRE(closed_count == 0);
 
-    unlink(socket_path.c_str());
+    unlink(test_constants::server_socket_file_path.c_str());
 
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 

@@ -16,10 +16,10 @@ TEST_CASE("local_datagram::client") {
     std::string last_error_message;
 
     auto client = std::make_unique<pqrs::local_datagram::client>(dispatcher,
-                                                                 socket_path,
+                                                                 test_constants::server_socket_file_path,
                                                                  std::nullopt,
-                                                                 server_buffer_size);
-    client->set_server_check_interval(server_check_interval);
+                                                                 test_constants::server_buffer_size);
+    client->set_server_check_interval(test_constants::server_check_interval);
     client->set_reconnect_interval(std::chrono::milliseconds(100));
 
     client->connected.connect([&] {
@@ -145,9 +145,9 @@ TEST_CASE("local_datagram::client large_buffer") {
     std::string last_error_message;
 
     auto client = std::make_unique<pqrs::local_datagram::client>(dispatcher,
-                                                                 socket_path,
+                                                                 test_constants::server_socket_file_path,
                                                                  std::nullopt,
-                                                                 server_buffer_size);
+                                                                 test_constants::server_buffer_size);
 
     client->error_occurred.connect([&](auto&& error_code) {
       last_error_message = error_code.message();
@@ -156,52 +156,52 @@ TEST_CASE("local_datagram::client large_buffer") {
     client->async_start();
 
     //
-    // buffer.size() == server_buffer_size
+    // buffer.size() == test_constants::server_buffer_size
     //
 
     {
-      std::vector<uint8_t> buffer(server_buffer_size, '1');
+      std::vector<uint8_t> buffer(test_constants::server_buffer_size, '1');
       client->async_send(buffer);
 
       std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-      REQUIRE(server->get_received_count() == server_buffer_size);
+      REQUIRE(server->get_received_count() == test_constants::server_buffer_size);
       REQUIRE(last_error_message == "");
     }
 
     //
-    // buffer.size() > server_buffer_size
+    // buffer.size() > test_constants::server_buffer_size
     //
 
     {
-      std::vector<uint8_t> buffer(server_buffer_size + 64, '2');
+      std::vector<uint8_t> buffer(test_constants::server_buffer_size + 64, '2');
       client->async_send(buffer);
 
       std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-      if (server->get_received_count() > server_buffer_size) {
+      if (server->get_received_count() > test_constants::server_buffer_size) {
         // Linux
         // (31 is server buffer_margin - buffer::send_entry)
-        REQUIRE(server->get_received_count() == server_buffer_size * 2 + 31);
+        REQUIRE(server->get_received_count() == test_constants::server_buffer_size * 2 + 31);
         REQUIRE(last_error_message == "");
       } else {
         // macOS
-        REQUIRE(server->get_received_count() == server_buffer_size);
+        REQUIRE(server->get_received_count() == test_constants::server_buffer_size);
         REQUIRE(last_error_message == "Message too long");
       }
     }
   }
 
-  // client_buffer_size > server_buffer_size
+  // client_buffer_size > test_constants::server_buffer_size
   {
     auto server = std::make_unique<test_server>(dispatcher,
                                                 std::nullopt);
 
     std::string last_error_message;
 
-    size_t client_buffer_size = server_buffer_size + 32;
+    size_t client_buffer_size = test_constants::server_buffer_size + 32;
     auto client = std::make_unique<pqrs::local_datagram::client>(dispatcher,
-                                                                 socket_path,
+                                                                 test_constants::server_socket_file_path,
                                                                  std::nullopt,
                                                                  client_buffer_size);
 
@@ -212,16 +212,16 @@ TEST_CASE("local_datagram::client large_buffer") {
     client->async_start();
 
     //
-    // buffer.size() == server_buffer_size
+    // buffer.size() == test_constants::server_buffer_size
     //
 
     {
-      std::vector<uint8_t> buffer(server_buffer_size, '1');
+      std::vector<uint8_t> buffer(test_constants::server_buffer_size, '1');
       client->async_send(buffer);
 
       std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-      REQUIRE(server->get_received_count() == server_buffer_size);
+      REQUIRE(server->get_received_count() == test_constants::server_buffer_size);
       REQUIRE(last_error_message == "");
     }
 
@@ -235,14 +235,14 @@ TEST_CASE("local_datagram::client large_buffer") {
 
       std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
-      if (server->get_received_count() > server_buffer_size) {
+      if (server->get_received_count() > test_constants::server_buffer_size) {
         // Linux
         // (31 is server buffer_margin - buffer::send_entry)
-        REQUIRE(server->get_received_count() == server_buffer_size * 2 + 31);
+        REQUIRE(server->get_received_count() == test_constants::server_buffer_size * 2 + 31);
         REQUIRE(last_error_message == "");
       } else {
         // macOS
-        REQUIRE(server->get_received_count() == server_buffer_size);
+        REQUIRE(server->get_received_count() == test_constants::server_buffer_size);
         REQUIRE(last_error_message == "No buffer space available");
       }
     }
@@ -267,9 +267,9 @@ TEST_CASE("local_datagram::client processed") {
                                                 std::nullopt);
 
     auto client = std::make_unique<pqrs::local_datagram::client>(dispatcher,
-                                                                 socket_path,
+                                                                 test_constants::server_socket_file_path,
                                                                  std::nullopt,
-                                                                 server_buffer_size);
+                                                                 test_constants::server_buffer_size);
 
     client->async_start();
 
@@ -299,9 +299,9 @@ TEST_CASE("local_datagram::client processed") {
     asio::error_code last_error_code;
 
     auto client = std::make_unique<pqrs::local_datagram::client>(dispatcher,
-                                                                 socket_path,
+                                                                 test_constants::server_socket_file_path,
                                                                  std::nullopt,
-                                                                 server_buffer_size);
+                                                                 test_constants::server_buffer_size);
 
     client->error_occurred.connect([&](auto&& error_code) {
       last_error_code = error_code;
@@ -312,7 +312,7 @@ TEST_CASE("local_datagram::client processed") {
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
     int processed_count = 0;
-    std::vector<uint8_t> buffer(server_buffer_size * 2, '0');
+    std::vector<uint8_t> buffer(test_constants::server_buffer_size * 2, '0');
     client->async_send(buffer, [&] {
       ++processed_count;
     });
