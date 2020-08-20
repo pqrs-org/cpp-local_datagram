@@ -57,9 +57,9 @@ int main(void) {
     std::cout << "server received size:" << buffer->size() << std::endl;
     output_received_data(buffer);
 
-    std::cout << *sender_endpoint << std::endl;
-
-    server->async_send(*buffer, sender_endpoint);
+    if (!sender_endpoint->path().empty()) {
+      server->async_send(*buffer, sender_endpoint);
+    }
   });
 
   server->async_start();
