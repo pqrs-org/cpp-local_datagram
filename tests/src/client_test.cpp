@@ -326,3 +326,32 @@ TEST_CASE("local_datagram::client processed") {
   dispatcher->terminate();
   dispatcher = nullptr;
 }
+
+TEST_CASE("local_datagram::client bidirectional") {
+  std::cout << "TEST_CASE(local_datagram::client bidirectional)" << std::endl;
+
+  auto time_source = std::make_shared<pqrs::dispatcher::hardware_time_source>();
+  auto dispatcher = std::make_shared<pqrs::dispatcher::dispatcher>(time_source);
+
+  {
+    auto server = std::make_unique<test_server>(dispatcher,
+                                                std::nullopt);
+
+    auto client = std::make_unique<test_client>(dispatcher,
+                                                std::nullopt,
+                                                true);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+    for (int i = 0; i < 1000; ++i) {
+      client->async_send();
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+    REQUIRE(client->get_received_count() == 32 * 1000);
+  }
+
+  dispatcher->terminate();
+  dispatcher = nullptr;
+}

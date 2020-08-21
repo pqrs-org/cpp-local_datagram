@@ -98,7 +98,8 @@ class test_client final {
 public:
   test_client(std::weak_ptr<pqrs::dispatcher::dispatcher> weak_dispatcher,
               std::optional<std::chrono::milliseconds> reconnect_interval,
-              bool bidirectional) : closed_(false) {
+              bool bidirectional) : closed_(false),
+                                    received_count_(0) {
     auto wait = pqrs::make_thread_wait();
 
     std::optional<std::string> client_socket_file_path;
@@ -131,6 +132,10 @@ public:
       closed_ = true;
     });
 
+    client_->received.connect([this](auto&& buffer, auto&& sender_endpoint) {
+      received_count_ += buffer->size();
+    });
+
     client_->async_start();
 
     wait->wait_notice();
@@ -150,6 +155,10 @@ public:
     return closed_;
   }
 
+  size_t get_received_count(void) const {
+    return received_count_;
+  }
+
   void async_send(void) {
     std::vector<uint8_t> client_buffer(32);
     client_buffer[0] = 10;
@@ -163,5 +172,6 @@ public:
 private:
   std::optional<bool> connected_;
   bool closed_;
+  size_t received_count_;
   std::unique_ptr<pqrs::local_datagram::client> client_;
 };
