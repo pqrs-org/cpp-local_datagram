@@ -33,8 +33,6 @@ int main(void) {
 
   std::string server_socket_file_path("tmp/server.sock");
   std::string client_socket_file_path("tmp/client.sock");
-  unlink(server_socket_file_path.c_str());
-  unlink(client_socket_file_path.c_str());
 
   // server
   size_t server_buffer_size = 32 * 1024;

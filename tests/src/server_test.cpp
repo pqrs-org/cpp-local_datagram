@@ -9,17 +9,20 @@ TEST_CASE("socket file") {
   auto time_source = std::make_shared<pqrs::dispatcher::hardware_time_source>();
   auto dispatcher = std::make_shared<pqrs::dispatcher::dispatcher>(time_source);
 
-  unlink(test_constants::server_socket_file_path.c_str());
-  REQUIRE(!pqrs::filesystem::exists(test_constants::server_socket_file_path));
+  {
+    std::error_code error_code;
+    std::filesystem::remove(test_constants::server_socket_file_path, error_code);
+  }
+  REQUIRE(!std::filesystem::exists(test_constants::server_socket_file_path));
 
   {
     auto server = std::make_shared<test_server>(dispatcher,
                                                 std::nullopt);
 
-    REQUIRE(pqrs::filesystem::exists(test_constants::server_socket_file_path));
+    REQUIRE(std::filesystem::exists(test_constants::server_socket_file_path));
   }
 
-  REQUIRE(!pqrs::filesystem::exists(test_constants::server_socket_file_path));
+  REQUIRE(!std::filesystem::exists(test_constants::server_socket_file_path));
 
   dispatcher->terminate();
   dispatcher = nullptr;
@@ -56,20 +59,20 @@ TEST_CASE("fail to create socket file") {
   dispatcher = nullptr;
 }
 
-TEST_CASE("keep existing file in destructor") {
-  std::cout << "TEST_CASE(keep existing file in destructor)" << std::endl;
+TEST_CASE("remove existing file") {
+  std::cout << "TEST_CASE(remove existing file)" << std::endl;
 
   auto time_source = std::make_shared<pqrs::dispatcher::hardware_time_source>();
   auto dispatcher = std::make_shared<pqrs::dispatcher::dispatcher>(time_source);
 
-  std::string regular_file_path("tmp/regular_file");
+  std::string regular_file_path("tmp/regular_file.sock");
 
   {
     std::ofstream file(regular_file_path);
     file << regular_file_path << std::endl;
   }
 
-  REQUIRE(pqrs::filesystem::exists(regular_file_path));
+  REQUIRE(std::filesystem::exists(regular_file_path));
 
   {
     size_t server_buffer_size(32 * 1024);
@@ -80,21 +83,17 @@ TEST_CASE("keep existing file in destructor") {
     server->set_reconnect_interval(std::chrono::milliseconds(100));
 
     auto wait = pqrs::make_thread_wait();
-    bool failed = false;
 
-    server->bind_failed.connect([&](auto&& error_code) {
-      failed = true;
+    server->bound.connect([&] {
       wait->notify();
     });
 
     server->async_start();
 
     wait->wait_notice();
-
-    REQUIRE(failed == true);
   }
 
-  REQUIRE(pqrs::filesystem::exists(regular_file_path));
+  REQUIRE(!std::filesystem::exists(regular_file_path));
 
   dispatcher->terminate();
   dispatcher = nullptr;
@@ -183,7 +182,10 @@ TEST_CASE("close when socket erased") {
   auto server = std::make_unique<test_server>(dispatcher,
                                               std::nullopt);
 
-  unlink(test_constants::server_socket_file_path.c_str());
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+  std::error_code error_code;
+  std::filesystem::remove(test_constants::server_socket_file_path, error_code);
 
   std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
@@ -228,7 +230,7 @@ TEST_CASE("local_datagram::server") {
 
   // Send after server is destroyed.
   {
-    REQUIRE(!pqrs::filesystem::exists(test_constants::server_socket_file_path));
+    REQUIRE(!std::filesystem::exists(test_constants::server_socket_file_path));
 
     auto client = std::make_unique<test_client>(dispatcher,
                                                 std::nullopt,
@@ -308,7 +310,8 @@ TEST_CASE("local_datagram::server reconnect") {
     REQUIRE(bind_failed_count == 0);
     REQUIRE(closed_count == 0);
 
-    unlink(test_constants::server_socket_file_path.c_str());
+    std::error_code error_code;
+    std::filesystem::remove(test_constants::server_socket_file_path, error_code);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
