@@ -2,4 +2,3 @@ catchorg/Catch2
 chriskohlhoff/asio
 fr00b0/nod
 pqrs-org/cpp-dispatcher
-pqrs-org/cpp-filesystem
