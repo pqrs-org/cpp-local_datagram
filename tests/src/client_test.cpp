@@ -354,3 +354,42 @@ TEST_CASE("local_datagram::client bidirectional") {
   dispatcher->terminate();
   dispatcher = nullptr;
 }
+
+TEST_CASE("local_datagram::client bind_failed") {
+  auto time_source = std::make_shared<pqrs::dispatcher::hardware_time_source>();
+  auto dispatcher = std::make_shared<pqrs::dispatcher::dispatcher>(time_source);
+
+  {
+    size_t connected_count = 0;
+    size_t connect_failed_count = 0;
+    size_t closed_count = 0;
+
+    auto client = std::make_unique<pqrs::local_datagram::client>(dispatcher,
+                                                                 test_constants::server_socket_file_path,
+                                                                 "/not_found/client_socket.sock",
+                                                                 test_constants::server_buffer_size);
+
+    client->connected.connect([&] {
+      ++connected_count;
+    });
+
+    client->connect_failed.connect([&](auto&& error_code) {
+      ++connect_failed_count;
+    });
+
+    client->closed.connect([&] {
+      ++closed_count;
+    });
+
+    client->async_start();
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+    REQUIRE(connected_count == 0);
+    REQUIRE(connect_failed_count == 1);
+    REQUIRE(closed_count == 0);
+  }
+
+  dispatcher->terminate();
+  dispatcher = nullptr;
+}
