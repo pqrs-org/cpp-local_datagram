@@ -31,8 +31,8 @@ int main(void) {
   auto time_source = std::make_shared<pqrs::dispatcher::hardware_time_source>();
   auto dispatcher = std::make_shared<pqrs::dispatcher::dispatcher>(time_source);
 
-  std::string server_socket_file_path("tmp/server.sock");
-  std::string client_socket_file_path("tmp/client.sock");
+  std::filesystem::path server_socket_file_path("tmp/server.sock");
+  std::filesystem::path client_socket_file_path("tmp/client.sock");
 
   // server
   size_t server_buffer_size = 32 * 1024;

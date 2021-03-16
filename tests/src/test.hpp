@@ -4,8 +4,8 @@
 #include <pqrs/local_datagram.hpp>
 
 namespace test_constants {
-const std::string server_socket_file_path("tmp/server.sock");
-const std::string client_socket_file_path("tmp/client.sock");
+const std::filesystem::path server_socket_file_path("tmp/server.sock");
+const std::filesystem::path client_socket_file_path("tmp/client.sock");
 const size_t server_buffer_size(32 * 1024);
 const std::chrono::milliseconds server_check_interval(100);
 } // namespace test_constants
@@ -102,7 +102,7 @@ public:
                                     received_count_(0) {
     auto wait = pqrs::make_thread_wait();
 
-    std::optional<std::string> client_socket_file_path;
+    std::optional<std::filesystem::path> client_socket_file_path;
     if (bidirectional) {
       client_socket_file_path = test_constants::client_socket_file_path;
       unlink(client_socket_file_path->c_str());

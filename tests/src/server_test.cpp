@@ -65,7 +65,7 @@ TEST_CASE("remove existing file") {
   auto time_source = std::make_shared<pqrs::dispatcher::hardware_time_source>();
   auto dispatcher = std::make_shared<pqrs::dispatcher::dispatcher>(time_source);
 
-  std::string regular_file_path("tmp/regular_file.sock");
+  std::filesystem::path regular_file_path("tmp/regular_file.sock");
 
   {
     std::ofstream file(regular_file_path);
