@@ -1,5 +1,5 @@
 [![Build Status](https://github.com/pqrs-org/cpp-local_datagram/workflows/CI/badge.svg)](https://github.com/pqrs-org/cpp-local_datagram/actions)
-[![License](https://img.shields.io/badge/license-Boost%20Software%20License-blue.svg)](https://github.com/pqrs-org/cpp-local_datagram/blob/master/LICENSE.md)
+[![License](https://img.shields.io/badge/license-Boost%20Software%20License-blue.svg)](https://github.com/pqrs-org/cpp-local_datagram/blob/main/LICENSE.md)
 
 # cpp-local_datagram
 
