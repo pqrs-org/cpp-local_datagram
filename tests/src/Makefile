@@ -10,3 +10,5 @@ clean:
 
 run:
 	./build/test
+	./build/asio_standalone_test
+	./build/asio_test

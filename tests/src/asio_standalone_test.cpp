@@ -1,12 +1,19 @@
-#include <catch2/catch.hpp>
-
 #define ASIO_STANDALONE
+
+#include <boost/ut.hpp>
 #include <pqrs/local_datagram.hpp>
 
-TEST_CASE("asio_standalone") {
+int main(void) {
+  using namespace boost::ut;
+  using namespace boost::ut::literals;
+
+  "asio_standalone"_test = [] {
 #ifdef ASIO_STANDALONE
-  REQUIRE(true);
+    expect(true);
 #else
-  REQUIRE(false);
+    expect(false);
 #endif
+  };
+
+  return 0;
 }

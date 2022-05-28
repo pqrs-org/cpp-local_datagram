@@ -13,14 +13,20 @@ project (test)
 
 add_executable(
   test
-  asio_test.cpp
-  asio_standalone_test.cpp
-  client_test.cpp
-  server_test.cpp
   test.cpp
 )
 
 target_link_libraries(
   test
   pthread
+)
+
+add_executable(
+  asio_standalone_test
+  asio_standalone_test.cpp
+)
+
+add_executable(
+  asio_test
+  asio_test.cpp
 )

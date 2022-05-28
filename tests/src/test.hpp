@@ -1,5 +1,6 @@
 #pragma once
 
+#include <boost/ut.hpp>
 #include <iostream>
 #include <pqrs/local_datagram.hpp>
 
@@ -48,14 +49,16 @@ public:
     });
 
     server_->received.connect([this](auto&& buffer, auto&& sender_endpoint) {
+      using namespace boost::ut;
+
       std::cout << "server received size:" << buffer->size() << std::endl;
 
       received_count_ += buffer->size();
 
       if (buffer->size() == 32) {
-        REQUIRE((*buffer)[0] == 10);
-        REQUIRE((*buffer)[1] == 20);
-        REQUIRE((*buffer)[2] == 30);
+        expect((*buffer)[0] == 10);
+        expect((*buffer)[1] == 20);
+        expect((*buffer)[2] == 30);
       }
 
       // echo
