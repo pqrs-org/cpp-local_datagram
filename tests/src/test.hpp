@@ -9,6 +9,7 @@ const std::filesystem::path server_socket_file_path("tmp/server.sock");
 const std::filesystem::path client_socket_file_path("tmp/client.sock");
 const size_t server_buffer_size(32 * 1024);
 const std::chrono::milliseconds server_check_interval(100);
+const std::chrono::milliseconds client_socket_check_interval(100);
 } // namespace test_constants
 
 class test_server final {
@@ -116,6 +117,7 @@ public:
                                                              client_socket_file_path,
                                                              test_constants::server_buffer_size);
     client_->set_server_check_interval(test_constants::server_check_interval);
+    client_->set_client_socket_check_interval(test_constants::client_socket_check_interval);
     client_->set_reconnect_interval(reconnect_interval);
 
     client_->connected.connect([this, wait] {

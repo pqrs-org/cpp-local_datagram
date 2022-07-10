@@ -358,6 +358,34 @@ void run_client_test(void) {
     dispatcher = nullptr;
   };
 
+  "local_datagram::client bidirectional check_client_endpoint"_test = [] {
+    std::cout << "TEST_CASE(local_datagram::client bidirectional check_client_endpoint)" << std::endl;
+
+    auto time_source = std::make_shared<pqrs::dispatcher::hardware_time_source>();
+    auto dispatcher = std::make_shared<pqrs::dispatcher::dispatcher>(time_source);
+
+    {
+      auto server = std::make_unique<test_server>(dispatcher,
+                                                  std::nullopt);
+
+      auto client = std::make_unique<test_client>(dispatcher,
+                                                  std::nullopt,
+                                                  true);
+
+      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+      std::error_code error_code;
+      std::filesystem::remove(test_constants::client_socket_file_path, error_code);
+
+      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+      expect(client->get_closed() == true);
+    }
+
+    dispatcher->terminate();
+    dispatcher = nullptr;
+  };
+
   "local_datagram::client bind_failed"_test = [] {
     auto time_source = std::make_shared<pqrs::dispatcher::hardware_time_source>();
     auto dispatcher = std::make_shared<pqrs::dispatcher::dispatcher>(time_source);
