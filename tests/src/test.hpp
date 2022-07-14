@@ -160,6 +160,10 @@ public:
     return closed_;
   }
 
+  void set_closed(bool value) {
+    closed_ = value;
+  }
+
   size_t get_received_count(void) const {
     return received_count_;
   }

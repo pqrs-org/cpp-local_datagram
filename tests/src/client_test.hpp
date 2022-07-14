@@ -369,12 +369,22 @@ void run_client_test(void) {
                                                   std::nullopt);
 
       auto client = std::make_unique<test_client>(dispatcher,
-                                                  std::nullopt,
+                                                  std::chrono::milliseconds(100),
                                                   true);
 
       std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
       std::error_code error_code;
+      std::filesystem::remove(test_constants::client_socket_file_path, error_code);
+
+      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+      expect(client->get_closed() == true);
+
+      // Once more
+
+      client->set_closed(false);
+
       std::filesystem::remove(test_constants::client_socket_file_path, error_code);
 
       std::this_thread::sleep_for(std::chrono::milliseconds(1000));
