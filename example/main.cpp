@@ -59,6 +59,9 @@ int main(void) {
       server->async_send(*buffer, sender_endpoint);
     }
   });
+  server->next_heartbeat_deadline_exceeded.connect([](auto&& sender_endpoint) {
+    std::cout << "server next_heartbeat_deadline_exceeded " << *sender_endpoint << std::endl;
+  });
 
   server->async_start();
 
@@ -70,6 +73,7 @@ int main(void) {
                                                                client_socket_file_path,
                                                                client_buffer_size);
   client->set_server_check_interval(std::chrono::milliseconds(3000));
+  client->set_next_heartbeat_deadline(std::chrono::milliseconds(10000));
   client->set_reconnect_interval(std::chrono::milliseconds(1000));
 
   client->connected.connect([&client] {
