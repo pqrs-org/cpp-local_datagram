@@ -7,6 +7,7 @@
 namespace test_constants {
 const std::filesystem::path server_socket_file_path("tmp/server.sock");
 const std::filesystem::path client_socket_file_path("tmp/client.sock");
+const std::filesystem::path client_socket2_file_path("tmp/client2.sock");
 const size_t server_buffer_size(32 * 1024);
 const std::chrono::milliseconds server_check_interval(100);
 const std::chrono::milliseconds client_socket_check_interval(100);
@@ -68,6 +69,10 @@ public:
       }
     });
 
+    server_->next_heartbeat_deadline_exceeded.connect([this](auto&& sender_endpoint) {
+      next_heartbeat_deadline_exceeded_counts_[sender_endpoint->path()] += 1;
+    });
+
     server_->async_start();
 
     wait->wait_notice();
@@ -91,11 +96,16 @@ public:
     return received_count_;
   }
 
+  const std::unordered_map<std::string, int>& get_next_heartbeat_deadline_exceeded_counts(void) {
+    return next_heartbeat_deadline_exceeded_counts_;
+  }
+
 private:
   std::optional<bool> bound_;
   bool closed_;
   size_t received_count_;
   std::unique_ptr<pqrs::local_datagram::server> server_;
+  std::unordered_map<std::string, int> next_heartbeat_deadline_exceeded_counts_;
 };
 
 class test_client final {
