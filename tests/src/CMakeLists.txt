@@ -14,6 +14,11 @@ include_directories(SYSTEM ${CMAKE_CURRENT_LIST_DIR}/../vendor/include)
 
 project(test)
 
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64")
+  add_compile_options(-fsanitize=address)
+  add_link_options(-fsanitize=address)
+endif()
+
 add_executable(
   test
   test.cpp
