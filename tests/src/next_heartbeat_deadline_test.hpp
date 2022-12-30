@@ -4,6 +4,7 @@
 void run_next_heartbeat_deadline_test(void) {
   using namespace boost::ut;
   using namespace boost::ut::literals;
+  using namespace std::string_literals;
 
   "next_heartbeat_deadline (server)"_test = [] {
     auto time_source = std::make_shared<pqrs::dispatcher::hardware_time_source>();
@@ -23,6 +24,8 @@ void run_next_heartbeat_deadline_test(void) {
 
       std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
+      expect(server->get_warning_message() == ""s);
+
       auto counts = server->get_next_heartbeat_deadline_exceeded_counts();
       expect(counts.size() == 0_i);
     }
@@ -41,6 +44,8 @@ void run_next_heartbeat_deadline_test(void) {
       client1->async_start();
 
       std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+      expect(server->get_warning_message() == ""s);
 
       auto counts = server->get_next_heartbeat_deadline_exceeded_counts();
       expect(counts.size() == 0_i);
@@ -69,6 +74,8 @@ void run_next_heartbeat_deadline_test(void) {
 
       std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
+      expect(server->get_warning_message() == ""s);
+
       auto counts = server->get_next_heartbeat_deadline_exceeded_counts();
       expect(counts.size() == 1_i);
       expect(counts[test_constants::client_socket_file_path] == 0_i);
@@ -91,7 +98,7 @@ void run_next_heartbeat_deadline_test(void) {
       std::shared_ptr<pqrs::local_datagram::client> client_in_server;
 
       server->received.connect([&client_in_server, &dispatcher](auto&& buffer, auto&& sender_endpoint) {
-        if (!sender_endpoint->path().empty()) {
+        if (pqrs::local_datagram::non_empty_filesystem_endpoint_path(*sender_endpoint)) {
           client_in_server = std::make_shared<pqrs::local_datagram::client>(dispatcher,
                                                                             sender_endpoint->path(),
                                                                             test_constants::client_socket2_file_path,
@@ -140,6 +147,32 @@ void run_next_heartbeat_deadline_test(void) {
       std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
       expect(next_heartbeat_deadline_exceeded_count > 0_i);
+    }
+
+    dispatcher->terminate();
+    dispatcher = nullptr;
+  };
+
+  "next_heartbeat_deadline (no sender_endpoint)"_test = [] {
+    auto time_source = std::make_shared<pqrs::dispatcher::hardware_time_source>();
+    auto dispatcher = std::make_shared<pqrs::dispatcher::dispatcher>(time_source);
+
+    // No next_heartbeat_deadline
+    {
+      auto server = std::make_unique<test_server>(dispatcher,
+                                                  std::nullopt);
+
+      auto client1 = std::make_unique<pqrs::local_datagram::client>(dispatcher,
+                                                                    test_constants::server_socket_file_path,
+                                                                    std::nullopt,
+                                                                    test_constants::server_buffer_size);
+      client1->set_server_check_interval(std::chrono::milliseconds(500));
+      client1->set_next_heartbeat_deadline(std::chrono::milliseconds(100));
+      client1->async_start();
+
+      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+      expect(server->get_warning_message() == "sender endpoint is required when next_heartbeat_deadline is specified"s);
     }
 
     dispatcher->terminate();

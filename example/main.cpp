@@ -55,7 +55,7 @@ int main(void) {
     std::cout << "server received size:" << buffer->size() << std::endl;
     output_received_data(buffer);
 
-    if (!sender_endpoint->path().empty()) {
+    if (pqrs::local_datagram::non_empty_filesystem_endpoint_path(*sender_endpoint)) {
       server->async_send(*buffer, sender_endpoint);
     }
   });

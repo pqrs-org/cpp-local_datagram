@@ -28,6 +28,10 @@ public:
     server_->set_server_check_interval(test_constants::server_check_interval);
     server_->set_reconnect_interval(reconnect_interval);
 
+    server_->warning_reported.connect([this](auto&& message) {
+      warning_message_ = message;
+    });
+
     server_->bound.connect([this, wait] {
       std::cout << "server bound" << std::endl;
 
@@ -64,7 +68,7 @@ public:
       }
 
       // echo
-      if (!sender_endpoint->path().empty()) {
+      if (pqrs::local_datagram::non_empty_filesystem_endpoint_path(*sender_endpoint)) {
         server_->async_send(*buffer, sender_endpoint);
       }
     });
@@ -82,6 +86,10 @@ public:
     std::cout << "~test_server" << std::endl;
 
     server_ = nullptr;
+  }
+
+  const std::string& get_warning_message(void) const {
+    return warning_message_;
   }
 
   std::optional<bool> get_bound(void) const {
@@ -106,6 +114,7 @@ private:
   size_t received_count_;
   std::unique_ptr<pqrs::local_datagram::server> server_;
   std::unordered_map<std::string, int> next_heartbeat_deadline_exceeded_counts_;
+  std::string warning_message_;
 };
 
 class test_client final {
