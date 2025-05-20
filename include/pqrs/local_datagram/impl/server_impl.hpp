@@ -41,7 +41,7 @@ public:
                   std::optional<std::chrono::milliseconds> server_check_interval) {
     async_close();
 
-    io_service_.post([this, server_socket_file_path, buffer_size, server_check_interval] {
+    asio::post(io_ctx_, [this, server_socket_file_path, buffer_size, server_check_interval] {
       socket_ready_ = false;
 
       // Remove existing file before `bind`.
@@ -53,7 +53,7 @@ public:
 
       // Open
 
-      socket_ = std::make_unique<asio::local::datagram_protocol::socket>(io_service_);
+      socket_ = std::make_unique<asio::local::datagram_protocol::socket>(io_ctx_);
 
       {
         asio::error_code error_code;
@@ -102,13 +102,13 @@ public:
   }
 
 private:
-  // This method is executed in `io_service_thread_`.
+  // This method is executed in `io_ctx_thread_`.
   void start_server_check(const std::filesystem::path& server_socket_file_path,
                           std::optional<std::chrono::milliseconds> server_check_interval) {
     if (server_check_interval) {
       server_check_timer_.start(
           [this, server_socket_file_path] {
-            io_service_.post([this, server_socket_file_path] {
+            asio::post(io_ctx_, [this, server_socket_file_path] {
               check_server(server_socket_file_path);
             });
           },
@@ -116,13 +116,13 @@ private:
     }
   }
 
-  // This method is executed in `io_service_thread_`.
+  // This method is executed in `io_ctx_thread_`.
   void stop_server_check(void) {
     server_check_timer_.stop();
     server_check_client_impl_ = nullptr;
   }
 
-  // This method is executed in `io_service_thread_`.
+  // This method is executed in `io_ctx_thread_`.
   void check_server(const std::filesystem::path& server_socket_file_path) {
     if (!socket_ ||
         !socket_ready_) {
@@ -135,7 +135,7 @@ private:
           server_check_client_send_entries_);
 
       server_check_client_impl_->connected.connect([this] {
-        io_service_.post([this] {
+        asio::post(io_ctx_, [this] {
           server_check_client_impl_ = nullptr;
         });
       });

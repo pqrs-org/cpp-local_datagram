@@ -45,13 +45,12 @@ protected:
             std::shared_ptr<std::deque<std::shared_ptr<send_entry>>> send_entries) : dispatcher_client(weak_dispatcher),
                                                                                      mode_(mode),
                                                                                      send_entries_(send_entries),
-                                                                                     io_service_(),
-                                                                                     work_(std::make_unique<asio::io_service::work>(io_service_)),
+                                                                                     work_guard_(asio::make_work_guard(io_ctx_)),
                                                                                      socket_ready_(false),
-                                                                                     send_invoker_(io_service_, asio_helper::time_point::pos_infin()),
-                                                                                     send_deadline_(io_service_, asio_helper::time_point::pos_infin()) {
-    io_service_thread_ = std::thread([this] {
-      this->io_service_.run();
+                                                                                     send_invoker_(io_ctx_, asio_helper::time_point::pos_infin()),
+                                                                                     send_deadline_(io_ctx_, asio_helper::time_point::pos_infin()) {
+    io_ctx_thread_ = std::thread([this] {
+      this->io_ctx_.run();
     });
   }
 
@@ -65,12 +64,12 @@ protected:
     // asio
     //
 
-    io_service_.post([this] {
-      work_ = nullptr;
+    asio::post(io_ctx_, [this] {
+      work_guard_.reset();
     });
 
-    if (io_service_thread_.joinable()) {
-      io_service_thread_.join();
+    if (io_ctx_thread_.joinable()) {
+      io_ctx_thread_.join();
     }
 
     //
@@ -123,7 +122,7 @@ protected:
 
 public:
   void async_close(void) {
-    io_service_.post([this] {
+    asio::post(io_ctx_, [this] {
       if (!socket_) {
         return;
       }
@@ -171,7 +170,7 @@ public:
 
 #pragma region server
 
-  // This method is executed in `io_service_thread_`.
+  // This method is executed in `io_ctx_thread_`.
   void async_receive(void) {
     if (!socket_ ||
         !socket_ready_) {
@@ -268,7 +267,7 @@ public:
       return;
     }
 
-    io_service_.post([this, entry] {
+    asio::post(io_ctx_, [this, entry] {
       send_entries_->push_back(entry);
       send_invoker_.expires_after(std::chrono::milliseconds(0));
     });
@@ -279,7 +278,7 @@ protected:
   // Sender
   //
 
-  // This method is executed in `io_service_thread_`.
+  // This method is executed in `io_ctx_thread_`.
   void await_send_entry(std::optional<std::chrono::milliseconds> delay) {
     if (!socket_ ||
         !socket_ready_) {
@@ -322,7 +321,7 @@ protected:
     }
   }
 
-  // This method is executed in `io_service_thread_`.
+  // This method is executed in `io_ctx_thread_`.
   void handle_send(const asio::error_code& error_code,
                    size_t bytes_transferred,
                    std::shared_ptr<send_entry> entry) {
@@ -417,7 +416,7 @@ protected:
     await_send_entry(next_delay);
   }
 
-  // This method is executed in `io_service_thread_`.
+  // This method is executed in `io_ctx_thread_`.
   void pop_front_send_entry(void) {
     if (send_entries_->empty()) {
       return;
@@ -433,7 +432,7 @@ protected:
     send_entries_->pop_front();
   }
 
-  // This method is executed in `io_service_thread_`.
+  // This method is executed in `io_ctx_thread_`.
   void check_send_deadline(void) {
     if (!socket_ ||
         !socket_ready_) {
@@ -460,9 +459,9 @@ protected:
   std::shared_ptr<std::deque<std::shared_ptr<send_entry>>> send_entries_;
 
   // asio
-  asio::io_service io_service_;
-  std::unique_ptr<asio::io_service::work> work_;
-  std::thread io_service_thread_;
+  asio::io_context io_ctx_;
+  asio::executor_work_guard<asio::io_context::executor_type> work_guard_;
+  std::thread io_ctx_thread_;
   std::unique_ptr<asio::local::datagram_protocol::socket> socket_;
   bool socket_ready_;
 
