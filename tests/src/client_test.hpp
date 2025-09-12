@@ -24,8 +24,10 @@ void run_client_test(void) {
       client->set_server_check_interval(test_constants::server_check_interval);
       client->set_reconnect_interval(std::chrono::milliseconds(100));
 
-      client->connected.connect([&] {
+      client->connected.connect([&](auto&& peer_pid) {
         std::cout << "client connected: " << connected_count << std::endl;
+
+        expect(peer_pid == getpid());
 
         ++connected_count;
       });
@@ -410,7 +412,7 @@ void run_client_test(void) {
                                                                    "/not_found/client_socket.sock",
                                                                    test_constants::server_buffer_size);
 
-      client->connected.connect([&] {
+      client->connected.connect([&](auto&& peer_pid) {
         ++connected_count;
       });
 
@@ -455,7 +457,7 @@ void run_client_test(void) {
         return test_constants::server_socket_file_path;
       });
 
-      client->connected.connect([&] {
+      client->connected.connect([&](auto&& peer_pid) {
         ++connected_count;
       });
 

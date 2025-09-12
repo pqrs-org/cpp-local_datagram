@@ -139,7 +139,7 @@ public:
     client_->set_client_socket_check_interval(test_constants::client_socket_check_interval);
     client_->set_reconnect_interval(reconnect_interval);
 
-    client_->connected.connect([this, wait] {
+    client_->connected.connect([this, wait](auto&& peer_pid) {
       connected_ = true;
       wait->notify();
     });

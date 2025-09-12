@@ -120,7 +120,7 @@ void run_next_heartbeat_deadline_test(void) {
                                                                    test_constants::server_buffer_size);
       client->set_server_check_interval(std::chrono::milliseconds(500));
 
-      client->connected.connect([&client] {
+      client->connected.connect([&client](auto&& peer_pid) {
         std::vector<uint8_t> client_buffer(32);
         client_buffer[0] = 'c';
         client_buffer[1] = 'o';

@@ -76,8 +76,9 @@ int main(void) {
   client->set_next_heartbeat_deadline(std::chrono::milliseconds(10000));
   client->set_reconnect_interval(std::chrono::milliseconds(1000));
 
-  client->connected.connect([&client] {
+  client->connected.connect([&client](auto&& peer_pid) {
     std::cout << "client connected" << std::endl;
+    std::cout << "peer_pid: " << peer_pid.value_or(-1) << std::endl;
 
     std::string s = "Type control-c to quit.";
     std::vector<uint8_t> buffer(std::begin(s), std::end(s));
