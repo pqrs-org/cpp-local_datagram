@@ -7,4 +7,5 @@
 // (See https://www.boost.org/LICENSE_1_0.txt)
 
 #include "local_datagram/client.hpp"
+#include "local_datagram/extra/peer_manager.hpp"
 #include "local_datagram/server.hpp"
