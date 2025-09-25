@@ -137,7 +137,7 @@ void run_next_heartbeat_deadline_test(void) {
       int next_heartbeat_deadline_exceeded_count = 0;
 
       client->next_heartbeat_deadline_exceeded.connect([&next_heartbeat_deadline_exceeded_count](auto&& sender_endpoint) {
-        if (sender_endpoint && sender_endpoint->path() == test_constants::client_socket2_file_path) {
+        if (sender_endpoint->path() == test_constants::client_socket2_file_path) {
           ++next_heartbeat_deadline_exceeded_count;
         }
       });

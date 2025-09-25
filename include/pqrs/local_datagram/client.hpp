@@ -23,8 +23,10 @@ public:
   nod::signal<void(const asio::error_code&)> connect_failed;
   nod::signal<void(void)> closed;
   nod::signal<void(const asio::error_code&)> error_occurred;
-  nod::signal<void(std::shared_ptr<std::vector<uint8_t>>, std::shared_ptr<asio::local::datagram_protocol::endpoint>)> received;
-  nod::signal<void(std::shared_ptr<asio::local::datagram_protocol::endpoint> sender_endpoint)> next_heartbeat_deadline_exceeded;
+  nod::signal<void(not_null_shared_ptr_t<std::vector<uint8_t>>,
+                   not_null_shared_ptr_t<asio::local::datagram_protocol::endpoint>)>
+      received;
+  nod::signal<void(not_null_shared_ptr_t<asio::local::datagram_protocol::endpoint> sender_endpoint)> next_heartbeat_deadline_exceeded;
 
   // Methods
 

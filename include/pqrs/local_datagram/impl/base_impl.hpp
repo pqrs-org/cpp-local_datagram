@@ -16,6 +16,7 @@
 #include <nod/nod.hpp>
 #include <optional>
 #include <pqrs/dispatcher.hpp>
+#include <pqrs/gsl.hpp>
 
 namespace pqrs {
 namespace local_datagram {
@@ -27,9 +28,11 @@ public:
   nod::signal<void(const std::string&)> warning_reported;
   nod::signal<void(void)> bound;
   nod::signal<void(const asio::error_code&)> bind_failed;
-  nod::signal<void(std::shared_ptr<std::vector<uint8_t>>, std::shared_ptr<asio::local::datagram_protocol::endpoint> sender_endpoint)> received;
+  nod::signal<void(not_null_shared_ptr_t<std::vector<uint8_t>>,
+                   not_null_shared_ptr_t<asio::local::datagram_protocol::endpoint> sender_endpoint)>
+      received;
   nod::signal<void(void)> closed;
-  nod::signal<void(std::shared_ptr<asio::local::datagram_protocol::endpoint> sender_endpoint)> next_heartbeat_deadline_exceeded;
+  nod::signal<void(not_null_shared_ptr_t<asio::local::datagram_protocol::endpoint> sender_endpoint)> next_heartbeat_deadline_exceeded;
   nod::signal<void(const asio::error_code&)> error_occurred;
 
   enum class mode {
