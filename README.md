@@ -15,6 +15,7 @@ local datagram server and client.
 cpp-local_datagram depends the following classes.
 
 - [asio](https://github.com/chriskohlhoff/asio/)
+- [GSL](https://github.com/microsoft/gsl)
 - [Nod](https://github.com/fr00b0/nod)
 - [pqrs::dispatcher](https://github.com/pqrs-org/cpp-dispatcher)
 
