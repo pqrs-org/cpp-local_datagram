@@ -68,7 +68,7 @@ public:
   }
 
   void async_send(const std::vector<uint8_t>& v,
-                  std::shared_ptr<asio::local::datagram_protocol::endpoint> destination_endpoint,
+                  not_null_shared_ptr_t<asio::local::datagram_protocol::endpoint> destination_endpoint,
                   std::function<void(void)> processed = nullptr) {
     auto entry = std::make_shared<impl::send_entry>(impl::send_entry::type::user_data,
                                                     v,
@@ -79,7 +79,7 @@ public:
 
   void async_send(const uint8_t* p,
                   size_t length,
-                  std::shared_ptr<asio::local::datagram_protocol::endpoint> destination_endpoint,
+                  not_null_shared_ptr_t<asio::local::datagram_protocol::endpoint> destination_endpoint,
                   std::function<void(void)> processed = nullptr) {
     auto entry = std::make_shared<impl::send_entry>(impl::send_entry::type::user_data,
                                                     p,

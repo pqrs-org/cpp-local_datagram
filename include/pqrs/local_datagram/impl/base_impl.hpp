@@ -216,14 +216,10 @@ public:
                                                     t->next_heartbeat_deadline_exceeded.connect([this, sender_endpoint] {
                                                       next_heartbeat_deadline_exceeded(sender_endpoint);
 
-                                                      next_heartbeat_deadline_timers_.erase(
-                                                          std::remove_if(
-                                                              std::begin(next_heartbeat_deadline_timers_),
-                                                              std::end(next_heartbeat_deadline_timers_),
-                                                              [sender_endpoint](auto&& t) {
-                                                                return t->get_sender_endpoint() == sender_endpoint;
-                                                              }),
-                                                          std::end(next_heartbeat_deadline_timers_));
+                                                      std::erase_if(next_heartbeat_deadline_timers_,
+                                                                    [sender_endpoint](auto&& t) {
+                                                                      return *(t->get_sender_endpoint()) == *sender_endpoint;
+                                                                    });
                                                     });
                                                     next_heartbeat_deadline_timers_.push_back(t);
                                                   } else {
