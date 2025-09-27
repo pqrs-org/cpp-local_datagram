@@ -110,7 +110,7 @@ public:
                                                       buffer_size_)})
                  .first;
 
-        std::weak_ptr<entry> weak_entry = pqrs::make_weak(it->second);
+        std::weak_ptr<entry> weak_entry = make_weak(it->second);
 
         it->second->get_client().connected.connect([this, weak_entry](auto&& peer_pid) {
           if (auto e = weak_entry.lock()) {
