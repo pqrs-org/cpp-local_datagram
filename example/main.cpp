@@ -5,7 +5,7 @@
 namespace {
 auto global_wait = pqrs::make_thread_wait();
 
-void output_received_data(std::shared_ptr<std::vector<uint8_t>> buffer) {
+void output_received_data(pqrs::not_null_shared_ptr_t<std::vector<uint8_t>> buffer) {
   if (!buffer->empty()) {
     std::cout << "buffer: `";
     int count = 0;

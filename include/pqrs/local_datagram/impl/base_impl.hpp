@@ -45,13 +45,14 @@ protected:
 
   base_impl(std::weak_ptr<dispatcher::dispatcher> weak_dispatcher,
             mode mode,
-            std::shared_ptr<std::deque<std::shared_ptr<send_entry>>> send_entries) : dispatcher_client(weak_dispatcher),
-                                                                                     mode_(mode),
-                                                                                     send_entries_(send_entries),
-                                                                                     work_guard_(asio::make_work_guard(io_ctx_)),
-                                                                                     socket_ready_(false),
-                                                                                     send_invoker_(io_ctx_, asio_helper::time_point::pos_infin()),
-                                                                                     send_deadline_(io_ctx_, asio_helper::time_point::pos_infin()) {
+            not_null_shared_ptr_t<std::deque<not_null_shared_ptr_t<send_entry>>> send_entries)
+      : dispatcher_client(weak_dispatcher),
+        mode_(mode),
+        send_entries_(send_entries),
+        work_guard_(asio::make_work_guard(io_ctx_)),
+        socket_ready_(false),
+        send_invoker_(io_ctx_, asio_helper::time_point::pos_infin()),
+        send_deadline_(io_ctx_, asio_helper::time_point::pos_infin()) {
     io_ctx_thread_ = std::thread([this] {
       this->io_ctx_.run();
     });
@@ -265,11 +266,7 @@ public:
 #pragma region sender
 
 public:
-  void async_send(std::shared_ptr<send_entry> entry) {
-    if (!entry) {
-      return;
-    }
-
+  void async_send(not_null_shared_ptr_t<send_entry> entry) {
     asio::post(io_ctx_, [this, entry] {
       send_entries_->push_back(entry);
       send_invoker_.expires_after(std::chrono::milliseconds(0));
@@ -327,7 +324,7 @@ protected:
   // This method is executed in `io_ctx_thread_`.
   void handle_send(const asio::error_code& error_code,
                    size_t bytes_transferred,
-                   std::shared_ptr<send_entry> entry) {
+                   not_null_shared_ptr_t<send_entry> entry) {
     std::optional<std::chrono::milliseconds> next_delay;
 
     entry->add_bytes_transferred(bytes_transferred);
@@ -459,7 +456,7 @@ protected:
 
   // External variables
   mode mode_;
-  std::shared_ptr<std::deque<std::shared_ptr<send_entry>>> send_entries_;
+  not_null_shared_ptr_t<std::deque<not_null_shared_ptr_t<send_entry>>> send_entries_;
 
   // asio
   asio::io_context io_ctx_;
@@ -472,7 +469,7 @@ protected:
   std::filesystem::path bound_path_;
   std::vector<uint8_t> receive_buffer_;
   asio::local::datagram_protocol::endpoint receive_sender_endpoint_;
-  std::vector<std::shared_ptr<next_heartbeat_deadline_timer>> next_heartbeat_deadline_timers_;
+  std::vector<not_null_shared_ptr_t<next_heartbeat_deadline_timer>> next_heartbeat_deadline_timers_;
 
   // Sender
   asio::steady_timer send_invoker_;

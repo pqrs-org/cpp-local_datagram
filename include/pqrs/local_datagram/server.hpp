@@ -35,7 +35,7 @@ public:
          size_t buffer_size) : dispatcher_client(weak_dispatcher),
                                server_socket_file_path_(server_socket_file_path),
                                buffer_size_(buffer_size),
-                               server_send_entries_(std::make_shared<std::deque<std::shared_ptr<impl::send_entry>>>()),
+                               server_send_entries_(std::make_shared<std::deque<not_null_shared_ptr_t<impl::send_entry>>>()),
                                reconnect_timer_(*this) {
   }
 
@@ -184,7 +184,7 @@ private:
     }
   }
 
-  void async_send(std::shared_ptr<impl::send_entry> entry) {
+  void async_send(not_null_shared_ptr_t<impl::send_entry> entry) {
     enqueue_to_dispatcher([this, entry] {
       if (server_impl_) {
         server_impl_->async_send(entry);
@@ -207,7 +207,7 @@ private:
   size_t buffer_size_;
   std::optional<std::chrono::milliseconds> server_check_interval_;
   std::optional<std::chrono::milliseconds> reconnect_interval_;
-  std::shared_ptr<std::deque<std::shared_ptr<impl::send_entry>>> server_send_entries_;
+  not_null_shared_ptr_t<std::deque<not_null_shared_ptr_t<impl::send_entry>>> server_send_entries_;
   std::unique_ptr<impl::server_impl> server_impl_;
   dispatcher::extra::timer reconnect_timer_;
 };

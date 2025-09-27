@@ -102,13 +102,15 @@ public:
   void async_send(const std::filesystem::path& peer_socket_file_path,
                   const std::vector<uint8_t>& v) {
     enqueue_to_dispatcher([this, peer_socket_file_path, v] {
-      const auto [it, inserted] = entries_.try_emplace(peer_socket_file_path);
-      if (inserted) {
-        it->second = std::make_shared<entry>(weak_dispatcher_,
-                                             peer_socket_file_path,
-                                             buffer_size_);
+      auto it = entries_.find(peer_socket_file_path);
+      if (it == std::end(entries_)) {
+        it = entries_.insert({peer_socket_file_path,
+                              std::make_shared<entry>(weak_dispatcher_,
+                                                      peer_socket_file_path,
+                                                      buffer_size_)})
+                 .first;
 
-        std::weak_ptr<entry> weak_entry = it->second;
+        std::weak_ptr<entry> weak_entry = pqrs::make_weak(it->second);
 
         it->second->get_client().connected.connect([this, weak_entry](auto&& peer_pid) {
           if (auto e = weak_entry.lock()) {
@@ -146,7 +148,7 @@ private:
   size_t buffer_size_;
   std::function<bool(std::optional<pid_t> peer_pid)> verify_peer_;
 
-  std::unordered_map<std::filesystem::path, std::shared_ptr<entry>> entries_;
+  std::unordered_map<std::filesystem::path, not_null_shared_ptr_t<entry>> entries_;
 };
 
 } // namespace extra
