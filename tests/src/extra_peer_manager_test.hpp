@@ -9,12 +9,19 @@ void run_extra_peer_manager_test(void) {
     auto time_source = std::make_shared<pqrs::dispatcher::hardware_time_source>();
     auto dispatcher = std::make_shared<pqrs::dispatcher::dispatcher>(time_source);
 
-    auto peer_manager = std::make_shared<pqrs::local_datagram::extra::peer_manager>(dispatcher,
-                                                                                    test_constants::server_buffer_size,
-                                                                                    [](std::optional<pid_t> peer_pid) {
-                                                                                      // verified
-                                                                                      return true;
-                                                                                    });
+    auto peer_manager = std::make_shared<pqrs::local_datagram::extra::peer_manager>(
+        dispatcher,
+        test_constants::server_buffer_size,
+        [](auto&& peer_pid,
+           auto&& peer_socket_file_path) {
+          expect(test_constants::client_socket_file_path == peer_socket_file_path);
+
+          // verified
+          return true;
+        },
+        [](auto&& peer_socket_file_path) {
+          expect(test_constants::client_socket_file_path == peer_socket_file_path);
+        });
 
     //
     // Create server
