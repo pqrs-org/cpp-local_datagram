@@ -18,10 +18,13 @@ void run_extra_peer_manager_test(void) {
 
           // verified
           return true;
-        },
-        [](auto&& peer_socket_file_path) {
-          expect(test_constants::client_socket_file_path == peer_socket_file_path);
         });
+
+    size_t expected_remaining_verified_peer_count = 0;
+    peer_manager->peer_closed.connect([&expected_remaining_verified_peer_count](auto&& peer_socket_file_path,
+                                                                                auto&& remaining_verified_peer_count) {
+      expect(expected_remaining_verified_peer_count == remaining_verified_peer_count);
+    });
 
     //
     // Create server
@@ -85,6 +88,9 @@ void run_extra_peer_manager_test(void) {
 
       received_wait->wait_notice();
     }
+
+    // Wait peer_closed
+    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
 
     server = nullptr;
     peer_manager = nullptr;
