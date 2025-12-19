@@ -1,3 +1,4 @@
+#include "extra_peer_manager_example.hpp"
 #include <csignal>
 #include <iostream>
 #include <pqrs/local_datagram.hpp>
@@ -132,6 +133,8 @@ int main(void) {
 
   client = nullptr;
   server = nullptr;
+
+  extra_peer_manager_example::run(dispatcher);
 
   dispatcher->terminate();
   dispatcher = nullptr;
