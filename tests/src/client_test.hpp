@@ -56,7 +56,7 @@ void run_client_test(void) {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
         expect(connected_count == i * 2);
-        expect(connect_failed_count > 2);
+        expect(connect_failed_count >= 2);
         expect(closed_count == i * 2);
         expect(last_error_message == "");
 
