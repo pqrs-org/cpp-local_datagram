@@ -7,7 +7,7 @@
 namespace extra_peer_manager_example {
 
 enum class payload_type {
-  negotiation,
+  handshake,
   shared_secret,
   message,
   message_response,
@@ -16,7 +16,7 @@ enum class payload_type {
 NLOHMANN_JSON_SERIALIZE_ENUM(
     payload_type,
     {
-        {payload_type::negotiation, "negotiation"},
+        {payload_type::handshake, "handshake"},
         {payload_type::shared_secret, "shared_secret"},
         {payload_type::message, "message"},
         {payload_type::message_response, "message_response"},
@@ -31,7 +31,7 @@ void run(std::shared_ptr<pqrs::dispatcher::dispatcher> dispatcher) {
       [](auto&& peer_pid,
          auto&& peer_socket_file_path) {
         // Note: Peer verification should be added here.
-        // Otherwise, anyone could obtain a valid secret simply by sending a payload_type::negotiation.
+        // Otherwise, anyone could obtain a valid secret simply by sending a payload_type::handshake.
         return true;
       });
 
@@ -61,7 +61,7 @@ void run(std::shared_ptr<pqrs::dispatcher::dispatcher> dispatcher) {
         std::cout << "server received:" << json << std::endl;
 
         switch (json["type"].get<payload_type>()) {
-          case payload_type::negotiation: {
+          case payload_type::handshake: {
             std::vector<uint8_t> secret(32);
             arc4random_buf(secret.data(), secret.size());
 
@@ -126,7 +126,7 @@ void run(std::shared_ptr<pqrs::dispatcher::dispatcher> dispatcher) {
 
     client->connected.connect([&client](auto&& peer_pid) {
       nlohmann::json payload({
-          {"type", payload_type::negotiation},
+          {"type", payload_type::handshake},
       });
       auto s = payload.dump();
       client->async_send(std::vector<uint8_t>(std::begin(s),
