@@ -44,7 +44,7 @@ public:
       client_.set_server_check_interval(server_check_interval);
     }
 
-    client& get_client(void) {
+    client& get_client() {
       return client_;
     }
 
@@ -52,7 +52,7 @@ public:
       connected_ = value;
     }
 
-    bool get_verified(void) const {
+    bool get_verified() const {
       return verified_;
     }
 
@@ -74,7 +74,7 @@ public:
       }
     }
 
-    void flush(void) {
+    void flush() {
       if (connected_) {
         for (auto&& v : queue_) {
           if (verified_) {
@@ -106,7 +106,7 @@ public:
         verify_peer_(verify_peer) {
   }
 
-  virtual ~peer_manager(void) {
+  virtual ~peer_manager() {
     detach_from_dispatcher([this] {
       entries_.clear();
     });

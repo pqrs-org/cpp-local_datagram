@@ -24,7 +24,7 @@ void output_received_data(pqrs::not_null_shared_ptr_t<std::vector<uint8_t>> buff
 }
 } // namespace
 
-int main(void) {
+int main() {
   std::signal(SIGINT, [](int) {
     global_wait->notify();
   });

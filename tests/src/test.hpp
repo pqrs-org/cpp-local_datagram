@@ -82,29 +82,29 @@ public:
     wait->wait_notice();
   }
 
-  ~test_server(void) {
+  ~test_server() {
     std::cout << "~test_server" << std::endl;
 
     server_ = nullptr;
   }
 
-  const std::string& get_warning_message(void) const {
+  const std::string& get_warning_message() const {
     return warning_message_;
   }
 
-  std::optional<bool> get_bound(void) const {
+  std::optional<bool> get_bound() const {
     return bound_;
   }
 
-  bool get_closed(void) const {
+  bool get_closed() const {
     return closed_;
   }
 
-  size_t get_received_count(void) const {
+  size_t get_received_count() const {
     return received_count_;
   }
 
-  const std::unordered_map<std::string, int>& get_next_heartbeat_deadline_exceeded_counts(void) {
+  const std::unordered_map<std::string, int>& get_next_heartbeat_deadline_exceeded_counts() {
     return next_heartbeat_deadline_exceeded_counts_;
   }
 
@@ -165,17 +165,17 @@ public:
     wait->wait_notice();
   }
 
-  ~test_client(void) {
+  ~test_client() {
     std::cout << "~test_client" << std::endl;
 
     client_ = nullptr;
   }
 
-  std::optional<bool> get_connected(void) const {
+  std::optional<bool> get_connected() const {
     return connected_;
   }
 
-  bool get_closed(void) const {
+  bool get_closed() const {
     return closed_;
   }
 
@@ -183,11 +183,11 @@ public:
     closed_ = value;
   }
 
-  size_t get_received_count(void) const {
+  size_t get_received_count() const {
     return received_count_;
   }
 
-  void async_send(void) {
+  void async_send() {
     std::vector<uint8_t> client_buffer(32);
     client_buffer[0] = 10;
     client_buffer[1] = 20;

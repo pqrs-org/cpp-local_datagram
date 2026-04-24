@@ -2,7 +2,7 @@
 #include <boost/ut.hpp>
 #include <fstream>
 
-void run_server_test(void) {
+void run_server_test() {
   using namespace boost::ut;
   using namespace boost::ut::literals;
 
