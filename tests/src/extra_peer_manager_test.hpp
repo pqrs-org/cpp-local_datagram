@@ -20,6 +20,18 @@ void run_extra_peer_manager_test(void) {
           return true;
         });
 
+    expect(!peer_manager->find_shared_secret(test_constants::client_socket_file_path));
+
+    const auto shared_secret = std::vector<uint8_t>({1, 2, 3, 4});
+    peer_manager->insert_shared_secret(test_constants::client_socket_file_path, shared_secret);
+    expect(peer_manager->verify_shared_secret(test_constants::client_socket_file_path, shared_secret));
+
+    {
+      auto found_shared_secret = peer_manager->find_shared_secret(test_constants::client_socket_file_path);
+      expect(static_cast<bool>(found_shared_secret));
+      expect(shared_secret == *found_shared_secret);
+    }
+
     size_t expected_remaining_verified_peer_count = 0;
     peer_manager->peer_closed.connect([&expected_remaining_verified_peer_count](auto&& peer_socket_file_path,
                                                                                 auto&& remaining_verified_peer_count) {

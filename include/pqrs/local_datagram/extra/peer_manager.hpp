@@ -177,7 +177,7 @@ public:
   }
 
   bool verify_shared_secret(const std::filesystem::path& peer_socket_file_path,
-                            const std::vector<uint8_t>& shared_secret) {
+                            const std::vector<uint8_t>& shared_secret) const {
     std::lock_guard<std::mutex> lock(shared_secrets_mutex_);
 
     auto it = shared_secrets_.find(peer_socket_file_path);
@@ -186,6 +186,17 @@ public:
     }
 
     return constant_time_equal(it->second, shared_secret);
+  }
+
+  std::optional<std::vector<uint8_t>> find_shared_secret(const std::filesystem::path& peer_socket_file_path) const {
+    std::lock_guard<std::mutex> lock(shared_secrets_mutex_);
+
+    auto it = shared_secrets_.find(peer_socket_file_path);
+    if (it == std::end(shared_secrets_)) {
+      return std::nullopt;
+    }
+
+    return it->second;
   }
 
 private:
@@ -218,7 +229,7 @@ private:
 
   // Optional: Use this to store shared secrets.
   std::unordered_map<std::filesystem::path, std::vector<uint8_t>> shared_secrets_;
-  std::mutex shared_secrets_mutex_;
+  mutable std::mutex shared_secrets_mutex_;
 };
 
 } // namespace extra
