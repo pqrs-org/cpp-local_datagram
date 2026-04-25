@@ -208,9 +208,8 @@ public:
                                                     return;
                                                   }
 
-                                                  auto it = std::find_if(
-                                                      std::begin(next_heartbeat_deadline_timers_),
-                                                      std::end(next_heartbeat_deadline_timers_),
+                                                  auto it = std::ranges::find_if(
+                                                      next_heartbeat_deadline_timers_,
                                                       [sender_endpoint](auto&& t) {
                                                         return *(t->get_sender_endpoint()) == *sender_endpoint;
                                                       });
@@ -241,10 +240,8 @@ public:
                                           break;
 
                                         case send_entry::type::user_data: {
-                                          auto v = std::make_shared<std::vector<uint8_t>>(bytes_transferred - 1);
-                                          std::copy(std::begin(receive_buffer_) + 1,
-                                                    std::begin(receive_buffer_) + bytes_transferred,
-                                                    std::begin(*v));
+                                          auto v = std::make_shared<std::vector<uint8_t>>(std::begin(receive_buffer_) + 1,
+                                                                                          std::begin(receive_buffer_) + bytes_transferred);
 
                                           auto sender_endpoint = std::make_shared<asio::local::datagram_protocol::endpoint>(receive_sender_endpoint_);
 
