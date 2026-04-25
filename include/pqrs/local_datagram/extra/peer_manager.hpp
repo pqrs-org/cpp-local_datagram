@@ -63,27 +63,27 @@ public:
     void async_send(const std::vector<uint8_t>& v) {
       flush();
 
-      if (connected_) {
-        if (verified_) {
-          client_.async_send(v);
-        }
+      if (connected_ && verified_) {
+        client_.async_send(v);
       } else {
         // Since we cannot verify before the connection is established,
         // enqueue pre-connection items and evaluate them after connected.
-        queue_.push_back(v);
+        queue_.emplace_back(v);
       }
     }
 
     void flush() {
-      if (connected_) {
-        for (auto&& v : queue_) {
-          if (verified_) {
-            client_.async_send(v);
-          }
-        }
-
-        queue_.clear();
+      if (!connected_) {
+        return;
       }
+
+      if (verified_) {
+        for (const auto& v : queue_) {
+          client_.async_send(v);
+        }
+      }
+
+      queue_.clear();
     }
 
   private:
@@ -177,23 +177,23 @@ public:
                             const std::vector<uint8_t>& shared_secret) const {
     std::lock_guard<std::mutex> lock(shared_secrets_mutex_);
 
-    auto it = shared_secrets_.find(peer_socket_file_path);
-    if (it == std::end(shared_secrets_)) {
+    if (auto it = shared_secrets_.find(peer_socket_file_path);
+        it == std::end(shared_secrets_)) {
       return false;
+    } else {
+      return constant_time_equal(it->second, shared_secret);
     }
-
-    return constant_time_equal(it->second, shared_secret);
   }
 
   std::optional<std::vector<uint8_t>> find_shared_secret(const std::filesystem::path& peer_socket_file_path) const {
     std::lock_guard<std::mutex> lock(shared_secrets_mutex_);
 
-    auto it = shared_secrets_.find(peer_socket_file_path);
-    if (it == std::end(shared_secrets_)) {
+    if (auto it = shared_secrets_.find(peer_socket_file_path);
+        it == std::end(shared_secrets_)) {
       return std::nullopt;
+    } else {
+      return it->second;
     }
-
-    return it->second;
   }
 
 private:
