@@ -181,6 +181,7 @@ private:
     if (!socket_ ||
         !socket_ready_) {
       stop_server_check();
+      return;
     }
 
     uint32_t next_heartbeat_deadline_value = 0;
@@ -225,6 +226,7 @@ private:
     if (!socket_ ||
         !socket_ready_) {
       stop_client_socket_check();
+      return;
     }
 
     if (!client_socket_check_client_impl_) {

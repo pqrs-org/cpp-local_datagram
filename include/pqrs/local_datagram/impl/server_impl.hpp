@@ -128,6 +128,7 @@ private:
     if (!socket_ ||
         !socket_ready_) {
       stop_server_check();
+      return;
     }
 
     if (!server_check_client_impl_) {
