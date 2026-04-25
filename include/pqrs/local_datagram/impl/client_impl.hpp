@@ -184,6 +184,9 @@ private:
       return;
     }
 
+    // uint32_t is sufficient here because next_heartbeat_deadline is a wait time in milliseconds.
+    // (e.g., 3000 milliseconds)
+    // Values beyond ~49 days are not meaningful for this use case.
     uint32_t next_heartbeat_deadline_value = 0;
     if (next_heartbeat_deadline) {
       next_heartbeat_deadline_value = next_heartbeat_deadline->count();
