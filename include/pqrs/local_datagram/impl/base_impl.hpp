@@ -147,12 +147,6 @@ public:
       send_deadline_.cancel();
 
       //
-      // Clear next heartbeat deadline timers
-      //
-
-      next_heartbeat_deadline_timers_.clear();
-
-      //
       // Signal
       //
 
@@ -167,6 +161,7 @@ public:
         }
 
         enqueue_to_dispatcher([this] {
+          next_heartbeat_deadline_timers_.clear();
           closed();
         });
       }
