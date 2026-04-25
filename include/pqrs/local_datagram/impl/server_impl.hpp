@@ -90,6 +90,7 @@ public:
       // Signal
 
       socket_ready_ = true;
+      ++next_heartbeat_deadline_timers_generation_;
 
       start_server_check(server_socket_file_path,
                          server_check_interval);

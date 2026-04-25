@@ -122,6 +122,7 @@ public:
               });
             } else {
               socket_ready_ = true;
+              ++next_heartbeat_deadline_timers_generation_;
 
               stop_server_check();
               start_server_check(server_check_interval,

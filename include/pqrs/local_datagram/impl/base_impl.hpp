@@ -11,6 +11,7 @@
 #include "next_heartbeat_deadline_timer.hpp"
 #include "send_entry.hpp"
 #include <algorithm>
+#include <atomic>
 #include <cstring>
 #include <deque>
 #include <filesystem>
@@ -152,6 +153,7 @@ public:
 
       if (socket_ready_) {
         socket_ready_ = false;
+        ++next_heartbeat_deadline_timers_generation_;
 
         if (!bound_path_.empty()) {
           std::error_code error_code;
@@ -197,10 +199,15 @@ public:
                                                   warning_reported("sender endpoint is required when next_heartbeat_deadline is specified");
                                                 });
                                               } else {
+                                                auto generation = next_heartbeat_deadline_timers_generation_.load();
                                                 std::chrono::milliseconds next_heartbeat_deadline_ms(next_heartbeat_deadline);
                                                 auto sender_endpoint = std::make_shared<asio::local::datagram_protocol::endpoint>(receive_sender_endpoint_);
 
-                                                enqueue_to_dispatcher([this, next_heartbeat_deadline_ms, sender_endpoint] {
+                                                enqueue_to_dispatcher([this, generation, next_heartbeat_deadline_ms, sender_endpoint] {
+                                                  if (generation != next_heartbeat_deadline_timers_generation_.load()) {
+                                                    return;
+                                                  }
+
                                                   auto it = std::find_if(
                                                       std::begin(next_heartbeat_deadline_timers_),
                                                       std::end(next_heartbeat_deadline_timers_),
@@ -211,7 +218,11 @@ public:
                                                     auto t = std::make_shared<next_heartbeat_deadline_timer>(weak_dispatcher_,
                                                                                                              sender_endpoint,
                                                                                                              next_heartbeat_deadline_ms);
-                                                    t->next_heartbeat_deadline_exceeded.connect([this, sender_endpoint] {
+                                                    t->next_heartbeat_deadline_exceeded.connect([this, generation, sender_endpoint] {
+                                                      if (generation != next_heartbeat_deadline_timers_generation_.load()) {
+                                                        return;
+                                                      }
+
                                                       next_heartbeat_deadline_exceeded(sender_endpoint);
 
                                                       std::erase_if(next_heartbeat_deadline_timers_,
@@ -464,6 +475,7 @@ protected:
   std::vector<uint8_t> receive_buffer_;
   asio::local::datagram_protocol::endpoint receive_sender_endpoint_;
   std::vector<not_null_shared_ptr_t<next_heartbeat_deadline_timer>> next_heartbeat_deadline_timers_;
+  std::atomic<uint64_t> next_heartbeat_deadline_timers_generation_{0};
 
   // Sender
   asio::steady_timer send_invoker_;
