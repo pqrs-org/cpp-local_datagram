@@ -13,9 +13,7 @@
 #include <pqrs/dispatcher.hpp>
 #include <unistd.h>
 
-namespace pqrs {
-namespace local_datagram {
-namespace impl {
+namespace pqrs::local_datagram::impl {
 class server_impl final : public base_impl {
 public:
   // Methods
@@ -162,6 +160,4 @@ private:
   std::unique_ptr<client_impl> server_check_client_impl_;
   not_null_shared_ptr_t<std::deque<not_null_shared_ptr_t<send_entry>>> server_check_client_send_entries_;
 };
-} // namespace impl
-} // namespace local_datagram
-} // namespace pqrs
+} // namespace pqrs::local_datagram::impl

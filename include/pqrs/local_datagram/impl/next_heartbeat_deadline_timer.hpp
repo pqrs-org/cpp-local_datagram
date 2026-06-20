@@ -12,11 +12,10 @@
 #include <nod/nod.hpp>
 #include <optional>
 #include <pqrs/dispatcher.hpp>
+#include <pqrs/dispatcher/extra/debounced_task.hpp>
 #include <pqrs/gsl.hpp>
 
-namespace pqrs {
-namespace local_datagram {
-namespace impl {
+namespace pqrs::local_datagram::impl {
 class next_heartbeat_deadline_timer final : public dispatcher::extra::dispatcher_client {
 public:
   //
@@ -34,7 +33,7 @@ public:
                                 std::chrono::milliseconds deadline)
       : dispatcher_client(weak_dispatcher),
         sender_endpoint_(sender_endpoint),
-        timer_(*this) {
+        task_(*this) {
     set_timer(deadline);
   }
 
@@ -42,31 +41,21 @@ public:
     detach_from_dispatcher();
   }
 
-  not_null_shared_ptr_t<asio::local::datagram_protocol::endpoint> get_sender_endpoint() const {
+  [[nodiscard]] not_null_shared_ptr_t<asio::local::datagram_protocol::endpoint> get_sender_endpoint() const {
     return sender_endpoint_;
   }
 
   // `set_timer` should be called in the dispatcher thread.
   void set_timer(std::chrono::milliseconds deadline) {
-    timer_count_ = 0;
-
-    timer_.start(
+    task_.debounce_after(
         [this] {
-          if (timer_count_ == 0) {
-            ++timer_count_;
-          } else {
-            timer_.stop();
-            next_heartbeat_deadline_exceeded();
-          }
+          next_heartbeat_deadline_exceeded();
         },
         deadline);
   }
 
 private:
   not_null_shared_ptr_t<asio::local::datagram_protocol::endpoint> sender_endpoint_;
-  dispatcher::extra::timer timer_;
-  int timer_count_;
+  dispatcher::extra::debounced_task task_;
 };
-} // namespace impl
-} // namespace local_datagram
-} // namespace pqrs
+} // namespace pqrs::local_datagram::impl

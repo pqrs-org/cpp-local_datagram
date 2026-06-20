@@ -11,8 +11,7 @@
 #include <nod/nod.hpp>
 #include <pqrs/dispatcher.hpp>
 
-namespace pqrs {
-namespace local_datagram {
+namespace pqrs::local_datagram {
 class server final : public dispatcher::extra::dispatcher_client {
 public:
   // Signals (invoked from the dispatcher thread)
@@ -39,7 +38,7 @@ public:
                                reconnect_timer_(*this) {
   }
 
-  virtual ~server() {
+  ~server() override {
     detach_from_dispatcher([this] {
       stop();
     });
@@ -211,5 +210,4 @@ private:
   std::unique_ptr<impl::server_impl> server_impl_;
   dispatcher::extra::timer reconnect_timer_;
 };
-} // namespace local_datagram
-} // namespace pqrs
+} // namespace pqrs::local_datagram

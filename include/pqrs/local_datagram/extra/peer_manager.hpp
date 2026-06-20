@@ -10,9 +10,7 @@
 #include <thread>
 #include <unordered_map>
 
-namespace pqrs {
-namespace local_datagram {
-namespace extra {
+namespace pqrs::local_datagram::extra {
 
 // Designed to manage peer clients on the server and send responses.
 class peer_manager final : public dispatcher::extra::dispatcher_client {
@@ -44,7 +42,7 @@ public:
       client_.set_server_check_interval(server_check_interval);
     }
 
-    client& get_client() {
+    [[nodiscard]] client& get_client() {
       return client_;
     }
 
@@ -52,7 +50,7 @@ public:
       connected_ = value;
     }
 
-    bool get_verified() const {
+    [[nodiscard]] bool get_verified() const {
       return verified_;
     }
 
@@ -106,7 +104,7 @@ public:
         verify_peer_(verify_peer) {
   }
 
-  virtual ~peer_manager() {
+  ~peer_manager() override {
     detach_from_dispatcher([this] {
       entries_.clear();
     });
@@ -139,7 +137,7 @@ public:
           error(peer_socket_file_path, error_code);
         });
 
-        it->second->get_client().closed.connect([this, weak_entry, peer_socket_file_path] {
+        it->second->get_client().closed.connect([this, peer_socket_file_path] {
           entries_.erase(peer_socket_file_path);
           erase_shared_secret(peer_socket_file_path);
 
@@ -173,8 +171,8 @@ public:
     shared_secrets_[peer_socket_file_path] = shared_secret;
   }
 
-  bool verify_shared_secret(const std::filesystem::path& peer_socket_file_path,
-                            const std::vector<uint8_t>& shared_secret) const {
+  [[nodiscard]] bool verify_shared_secret(const std::filesystem::path& peer_socket_file_path,
+                                          const std::vector<uint8_t>& shared_secret) const {
     std::lock_guard<std::mutex> lock(shared_secrets_mutex_);
 
     if (auto it = shared_secrets_.find(peer_socket_file_path);
@@ -185,7 +183,7 @@ public:
     }
   }
 
-  std::optional<std::vector<uint8_t>> find_shared_secret(const std::filesystem::path& peer_socket_file_path) const {
+  [[nodiscard]] std::optional<std::vector<uint8_t>> find_shared_secret(const std::filesystem::path& peer_socket_file_path) const {
     std::lock_guard<std::mutex> lock(shared_secrets_mutex_);
 
     if (auto it = shared_secrets_.find(peer_socket_file_path);
@@ -197,8 +195,8 @@ public:
   }
 
 private:
-  bool constant_time_equal(const std::vector<uint8_t>& a,
-                           const std::vector<uint8_t>& b) const {
+  [[nodiscard]] bool constant_time_equal(const std::vector<uint8_t>& a,
+                                         const std::vector<uint8_t>& b) const {
     if (a.size() != b.size()) {
       return false;
     }
@@ -229,6 +227,4 @@ private:
   mutable std::mutex shared_secrets_mutex_;
 };
 
-} // namespace extra
-} // namespace local_datagram
-} // namespace pqrs
+} // namespace pqrs::local_datagram::extra

@@ -4,10 +4,9 @@
 // Distributed under the Boost Software License, Version 1.0.
 // (See https://www.boost.org/LICENSE_1_0.txt)
 
-namespace pqrs {
-namespace local_datagram {
+namespace pqrs::local_datagram {
 
-inline bool non_empty_filesystem_endpoint_path(const std::string& path) {
+[[nodiscard]] inline bool non_empty_filesystem_endpoint_path(const std::string& path) {
   if (path.empty()) {
     return false;
   }
@@ -20,9 +19,8 @@ inline bool non_empty_filesystem_endpoint_path(const std::string& path) {
   return true;
 }
 
-inline bool non_empty_filesystem_endpoint_path(const asio::local::datagram_protocol::endpoint& endpoint) {
+[[nodiscard]] inline bool non_empty_filesystem_endpoint_path(const asio::local::datagram_protocol::endpoint& endpoint) {
   return non_empty_filesystem_endpoint_path(endpoint.path());
 }
 
-} // namespace local_datagram
-} // namespace pqrs
+} // namespace pqrs::local_datagram

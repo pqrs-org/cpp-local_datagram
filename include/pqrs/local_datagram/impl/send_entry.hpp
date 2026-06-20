@@ -10,9 +10,7 @@
 #include <optional>
 #include <vector>
 
-namespace pqrs {
-namespace local_datagram {
-namespace impl {
+namespace pqrs::local_datagram::impl {
 class send_entry final {
 public:
   // Sending empty data causes `No buffer space available` error after wake up on macOS.
@@ -74,19 +72,19 @@ public:
     }
   }
 
-  std::shared_ptr<asio::local::datagram_protocol::endpoint> get_destination_endpoint() const {
+  [[nodiscard]] std::shared_ptr<asio::local::datagram_protocol::endpoint> get_destination_endpoint() const {
     return destination_endpoint_;
   }
 
-  const std::function<void()>& get_processed() const {
+  [[nodiscard]] const std::function<void()>& get_processed() const {
     return processed_;
   }
 
-  size_t get_bytes_transferred() const {
+  [[nodiscard]] size_t get_bytes_transferred() const {
     return bytes_transferred_;
   }
 
-  size_t get_no_buffer_space_error_count() const {
+  [[nodiscard]] size_t get_no_buffer_space_error_count() const {
     return no_buffer_space_error_count_;
   }
 
@@ -94,7 +92,7 @@ public:
     no_buffer_space_error_count_ = value;
   }
 
-  const asio::const_buffer make_buffer() const {
+  [[nodiscard]] asio::const_buffer make_buffer() const {
     if (bytes_transferred_ >= buffer_.size()) {
       return asio::const_buffer();
     }
@@ -108,7 +106,7 @@ public:
     bytes_transferred_ += value;
   }
 
-  size_t rest_bytes() {
+  [[nodiscard]] size_t rest_bytes() const {
     if (bytes_transferred_ >= buffer_.size()) {
       return 0;
     }
@@ -116,7 +114,7 @@ public:
     return buffer_.size() - bytes_transferred_;
   }
 
-  bool transfer_complete() {
+  [[nodiscard]] bool transfer_complete() const {
     return bytes_transferred_ >= buffer_.size();
   }
 
@@ -127,6 +125,4 @@ private:
   size_t no_buffer_space_error_count_;
   std::vector<uint8_t> buffer_;
 };
-} // namespace impl
-} // namespace local_datagram
-} // namespace pqrs
+} // namespace pqrs::local_datagram::impl

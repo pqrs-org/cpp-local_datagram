@@ -88,23 +88,23 @@ public:
     server_ = nullptr;
   }
 
-  const std::string& get_warning_message() const {
+  [[nodiscard]] const std::string& get_warning_message() const {
     return warning_message_;
   }
 
-  std::optional<bool> get_bound() const {
+  [[nodiscard]] std::optional<bool> get_bound() const {
     return bound_;
   }
 
-  bool get_closed() const {
+  [[nodiscard]] bool get_closed() const {
     return closed_;
   }
 
-  size_t get_received_count() const {
+  [[nodiscard]] size_t get_received_count() const {
     return received_count_;
   }
 
-  const std::unordered_map<std::string, int>& get_next_heartbeat_deadline_exceeded_counts() {
+  [[nodiscard]] const std::unordered_map<std::string, int>& get_next_heartbeat_deadline_exceeded_counts() const {
     return next_heartbeat_deadline_exceeded_counts_;
   }
 
@@ -171,11 +171,11 @@ public:
     client_ = nullptr;
   }
 
-  std::optional<bool> get_connected() const {
+  [[nodiscard]] std::optional<bool> get_connected() const {
     return connected_;
   }
 
-  bool get_closed() const {
+  [[nodiscard]] bool get_closed() const {
     return closed_;
   }
 
@@ -183,7 +183,7 @@ public:
     closed_ = value;
   }
 
-  size_t get_received_count() const {
+  [[nodiscard]] size_t get_received_count() const {
     return received_count_;
   }
 

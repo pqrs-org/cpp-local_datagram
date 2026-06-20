@@ -12,8 +12,7 @@
 #include <pqrs/dispatcher.hpp>
 #include <unordered_map>
 
-namespace pqrs {
-namespace local_datagram {
+namespace pqrs::local_datagram {
 class client final : public dispatcher::extra::dispatcher_client {
 public:
   // Signals (invoked from the dispatcher thread)
@@ -105,7 +104,7 @@ public:
     });
   }
 
-  virtual ~client() {
+  ~client() override {
     detach_from_dispatcher([this] {
       stop();
     });
@@ -254,5 +253,4 @@ private:
   std::shared_ptr<impl::client_impl> client_impl_;
   dispatcher::extra::timer reconnect_timer_;
 };
-} // namespace local_datagram
-} // namespace pqrs
+} // namespace pqrs::local_datagram

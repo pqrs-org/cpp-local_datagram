@@ -12,26 +12,20 @@
 #undef ASIO_STANDALONE
 #endif
 
-namespace pqrs {
-namespace local_datagram {
-namespace impl {
-namespace asio_helper {
+namespace pqrs::local_datagram::impl::asio_helper {
 
 namespace time_point {
-inline asio::steady_timer::time_point now() {
+[[nodiscard]] inline asio::steady_timer::time_point now() {
   return asio::steady_timer::clock_type::now();
 }
 
-inline asio::steady_timer::time_point pos_infin() {
+[[nodiscard]] inline asio::steady_timer::time_point pos_infin() {
   return asio::steady_timer::time_point::max();
 }
 
-inline asio::steady_timer::time_point neg_infin() {
+[[nodiscard]] inline asio::steady_timer::time_point neg_infin() {
   return asio::steady_timer::time_point::min();
 }
 
 } // namespace time_point
-} // namespace asio_helper
-} // namespace impl
-} // namespace local_datagram
-} // namespace pqrs
+} // namespace pqrs::local_datagram::impl::asio_helper

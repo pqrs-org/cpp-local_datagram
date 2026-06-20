@@ -16,9 +16,7 @@
 #include <optional>
 #include <pqrs/dispatcher.hpp>
 
-namespace pqrs {
-namespace local_datagram {
-namespace impl {
+namespace pqrs::local_datagram::impl {
 class client_impl final : public base_impl {
 public:
   // Signals (invoked from the dispatcher thread)
@@ -264,6 +262,4 @@ private:
   std::unique_ptr<client_impl> client_socket_check_client_impl_;
   not_null_shared_ptr_t<std::deque<not_null_shared_ptr_t<send_entry>>> client_socket_check_client_send_entries_;
 };
-} // namespace impl
-} // namespace local_datagram
-} // namespace pqrs
+} // namespace pqrs::local_datagram::impl

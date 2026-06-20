@@ -20,9 +20,7 @@
 #include <pqrs/dispatcher.hpp>
 #include <pqrs/gsl.hpp>
 
-namespace pqrs {
-namespace local_datagram {
-namespace impl {
+namespace pqrs::local_datagram::impl {
 class base_impl : public dispatcher::extra::dispatcher_client {
 public:
   // Signals (invoked from the dispatcher thread)
@@ -60,7 +58,7 @@ protected:
     });
   }
 
-  virtual ~base_impl() {
+  ~base_impl() override {
   }
 
   // We have to terminate asio and pqrs::dispatcher while all instance variables of child class are alive.
@@ -478,6 +476,4 @@ protected:
   asio::steady_timer send_invoker_;
   asio::steady_timer send_deadline_;
 };
-} // namespace impl
-} // namespace local_datagram
-} // namespace pqrs
+} // namespace pqrs::local_datagram::impl
