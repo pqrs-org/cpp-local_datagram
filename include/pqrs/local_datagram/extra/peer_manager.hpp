@@ -14,6 +14,10 @@ namespace pqrs::local_datagram::extra {
 
 // Designed to manage peer clients on the server and send responses.
 class peer_manager final : public dispatcher::extra::dispatcher_client {
+private:
+  // Keep the guard first so member initialization failures also detach.
+  pqrs::dispatcher::extra::dispatcher_client_constructor_exception_guard dispatcher_client_constructor_exception_guard_{*this};
+
 public:
   //
   // Signals (invoked from the dispatcher thread)
@@ -102,6 +106,7 @@ public:
       : dispatcher_client(weak_dispatcher),
         buffer_size_(buffer_size),
         verify_peer_(verify_peer) {
+    dispatcher_client_constructor_exception_guard_.initialize();
   }
 
   ~peer_manager() override {

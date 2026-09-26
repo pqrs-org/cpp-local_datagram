@@ -9,6 +9,7 @@ clean:
 	rm -rf build
 
 run:
+	./build/constructor_exception_test
 	./build/test
 	./build/asio_standalone_test
 	./build/asio_test

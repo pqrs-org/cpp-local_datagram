@@ -14,6 +14,10 @@
 
 namespace pqrs::local_datagram {
 class client final : public dispatcher::extra::dispatcher_client {
+private:
+  // Keep the guard first so member initialization failures also detach.
+  pqrs::dispatcher::extra::dispatcher_client_constructor_exception_guard dispatcher_client_constructor_exception_guard_{*this};
+
 public:
   // Signals (invoked from the dispatcher thread)
 
@@ -41,67 +45,70 @@ public:
                                server_socket_file_path_resolver_(nullptr),
                                client_send_entries_(std::make_shared<std::deque<not_null_shared_ptr_t<impl::send_entry>>>()),
                                reconnect_timer_(*this) {
-    client_impl_ = std::make_shared<impl::client_impl>(
-        weak_dispatcher_,
-        client_send_entries_);
+    dispatcher_client_constructor_exception_guard_.initialize(
+        [&] {
+          client_impl_ = std::make_shared<impl::client_impl>(
+              weak_dispatcher_,
+              client_send_entries_);
 
-    client_impl_->warning_reported.connect([this](auto&& message) {
-      enqueue_to_dispatcher([this, message] {
-        warning_reported(message);
-      });
-    });
+          client_impl_->warning_reported.connect([this](auto&& message) {
+            enqueue_to_dispatcher([this, message] {
+              warning_reported(message);
+            });
+          });
 
-    client_impl_->connected.connect([this](auto&& peer_pid) {
-      enqueue_to_dispatcher([this, peer_pid] {
-        connected(peer_pid);
-      });
-    });
+          client_impl_->connected.connect([this](auto&& peer_pid) {
+            enqueue_to_dispatcher([this, peer_pid] {
+              connected(peer_pid);
+            });
+          });
 
-    auto connect_failed_handler = [this](auto&& error_code) {
-      enqueue_to_dispatcher([this, error_code] {
-        connect_failed(error_code);
-      });
+          auto connect_failed_handler = [this](auto&& error_code) {
+            enqueue_to_dispatcher([this, error_code] {
+              connect_failed(error_code);
+            });
 
-      if (client_impl_) {
-        client_impl_->async_close();
-      }
+            if (client_impl_) {
+              client_impl_->async_close();
+            }
 
-      start_reconnect_timer();
-    };
+            start_reconnect_timer();
+          };
 
-    client_impl_->connect_failed.connect([connect_failed_handler](auto&& error_code) {
-      connect_failed_handler(error_code);
-    });
+          client_impl_->connect_failed.connect([connect_failed_handler](auto&& error_code) {
+            connect_failed_handler(error_code);
+          });
 
-    client_impl_->bind_failed.connect([connect_failed_handler](auto&& error_code) {
-      connect_failed_handler(error_code);
-    });
+          client_impl_->bind_failed.connect([connect_failed_handler](auto&& error_code) {
+            connect_failed_handler(error_code);
+          });
 
-    client_impl_->closed.connect([this] {
-      enqueue_to_dispatcher([this] {
-        closed();
-      });
+          client_impl_->closed.connect([this] {
+            enqueue_to_dispatcher([this] {
+              closed();
+            });
 
-      start_reconnect_timer();
-    });
+            start_reconnect_timer();
+          });
 
-    client_impl_->error_occurred.connect([this](auto&& error_code) {
-      enqueue_to_dispatcher([this, error_code] {
-        error_occurred(error_code);
-      });
-    });
+          client_impl_->error_occurred.connect([this](auto&& error_code) {
+            enqueue_to_dispatcher([this, error_code] {
+              error_occurred(error_code);
+            });
+          });
 
-    client_impl_->received.connect([this](auto&& buffer, auto&& sender_endpoint) {
-      enqueue_to_dispatcher([this, buffer, sender_endpoint] {
-        received(buffer, sender_endpoint);
-      });
-    });
+          client_impl_->received.connect([this](auto&& buffer, auto&& sender_endpoint) {
+            enqueue_to_dispatcher([this, buffer, sender_endpoint] {
+              received(buffer, sender_endpoint);
+            });
+          });
 
-    client_impl_->next_heartbeat_deadline_exceeded.connect([this](auto&& sender_endpoint) {
-      enqueue_to_dispatcher([this, sender_endpoint] {
-        next_heartbeat_deadline_exceeded(sender_endpoint);
-      });
-    });
+          client_impl_->next_heartbeat_deadline_exceeded.connect([this](auto&& sender_endpoint) {
+            enqueue_to_dispatcher([this, sender_endpoint] {
+              next_heartbeat_deadline_exceeded(sender_endpoint);
+            });
+          });
+        });
   }
 
   ~client() override {
@@ -251,6 +258,7 @@ private:
 
   not_null_shared_ptr_t<std::deque<not_null_shared_ptr_t<impl::send_entry>>> client_send_entries_;
   std::shared_ptr<impl::client_impl> client_impl_;
+  // Construct after potentially throwing members; destruction requires detach.
   dispatcher::extra::timer reconnect_timer_;
 };
 } // namespace pqrs::local_datagram

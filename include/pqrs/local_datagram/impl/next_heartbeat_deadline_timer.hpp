@@ -17,6 +17,10 @@
 
 namespace pqrs::local_datagram::impl {
 class next_heartbeat_deadline_timer final : public dispatcher::extra::dispatcher_client {
+private:
+  // Keep the guard first so member initialization failures also detach.
+  pqrs::dispatcher::extra::dispatcher_client_constructor_exception_guard dispatcher_client_constructor_exception_guard_{*this};
+
 public:
   //
   // Signals (invoked from the dispatcher thread)
@@ -34,10 +38,13 @@ public:
       : dispatcher_client(weak_dispatcher),
         sender_endpoint_(sender_endpoint),
         task_(*this) {
-    set_timer(deadline);
+    dispatcher_client_constructor_exception_guard_.initialize(
+        [&] {
+          set_timer(deadline);
+        });
   }
 
-  ~next_heartbeat_deadline_timer() {
+  ~next_heartbeat_deadline_timer() override {
     detach_from_dispatcher();
   }
 
@@ -56,6 +63,7 @@ public:
 
 private:
   not_null_shared_ptr_t<asio::local::datagram_protocol::endpoint> sender_endpoint_;
+  // Construct after potentially throwing members; destruction requires detach.
   dispatcher::extra::debounced_task task_;
 };
 } // namespace pqrs::local_datagram::impl

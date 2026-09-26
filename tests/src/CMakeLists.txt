@@ -33,3 +33,13 @@ add_executable(
   asio_test
   asio_test.cpp
 )
+
+add_executable(
+  constructor_exception_test
+  constructor_exception_test.cpp
+)
+
+target_link_libraries(
+  constructor_exception_test
+  pthread
+)

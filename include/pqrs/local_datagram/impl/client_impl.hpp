@@ -18,6 +18,10 @@
 
 namespace pqrs::local_datagram::impl {
 class client_impl final : public base_impl {
+private:
+  // Keep the guard first so member initialization failures also detach.
+  pqrs::dispatcher::extra::dispatcher_client_constructor_exception_guard dispatcher_client_constructor_exception_guard_{*this};
+
 public:
   // Signals (invoked from the dispatcher thread)
 
@@ -33,12 +37,13 @@ public:
       : base_impl(weak_dispatcher,
                   base_impl::mode::client,
                   send_entries),
+        client_socket_check_client_send_entries_(std::make_shared<std::deque<not_null_shared_ptr_t<impl::send_entry>>>()),
         server_check_timer_(*this),
-        client_socket_check_timer_(*this),
-        client_socket_check_client_send_entries_(std::make_shared<std::deque<not_null_shared_ptr_t<impl::send_entry>>>()) {
+        client_socket_check_timer_(*this) {
+    dispatcher_client_constructor_exception_guard_.initialize();
   }
 
-  ~client_impl() {
+  ~client_impl() override {
     async_close();
 
     terminate_base_impl();
@@ -257,9 +262,10 @@ private:
     }
   }
 
-  dispatcher::extra::timer server_check_timer_;
-  dispatcher::extra::timer client_socket_check_timer_;
   std::unique_ptr<client_impl> client_socket_check_client_impl_;
   not_null_shared_ptr_t<std::deque<not_null_shared_ptr_t<send_entry>>> client_socket_check_client_send_entries_;
+  // Construct after potentially throwing members; destruction requires detach.
+  dispatcher::extra::timer server_check_timer_;
+  dispatcher::extra::timer client_socket_check_timer_;
 };
 } // namespace pqrs::local_datagram::impl

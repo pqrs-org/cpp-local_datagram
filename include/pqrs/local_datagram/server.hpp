@@ -13,6 +13,10 @@
 
 namespace pqrs::local_datagram {
 class server final : public dispatcher::extra::dispatcher_client {
+private:
+  // Keep the guard first so member initialization failures also detach.
+  pqrs::dispatcher::extra::dispatcher_client_constructor_exception_guard dispatcher_client_constructor_exception_guard_{*this};
+
 public:
   // Signals (invoked from the dispatcher thread)
 
@@ -36,6 +40,7 @@ public:
                                buffer_size_(buffer_size),
                                server_send_entries_(std::make_shared<std::deque<not_null_shared_ptr_t<impl::send_entry>>>()),
                                reconnect_timer_(*this) {
+    dispatcher_client_constructor_exception_guard_.initialize();
   }
 
   ~server() override {
@@ -208,6 +213,7 @@ private:
   std::optional<std::chrono::milliseconds> reconnect_interval_;
   not_null_shared_ptr_t<std::deque<not_null_shared_ptr_t<impl::send_entry>>> server_send_entries_;
   std::unique_ptr<impl::server_impl> server_impl_;
+  // Construct after potentially throwing members; destruction requires detach.
   dispatcher::extra::timer reconnect_timer_;
 };
 } // namespace pqrs::local_datagram

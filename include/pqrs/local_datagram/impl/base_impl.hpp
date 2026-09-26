@@ -22,6 +22,10 @@
 
 namespace pqrs::local_datagram::impl {
 class base_impl : public dispatcher::extra::dispatcher_client {
+private:
+  // Keep the guard first so member initialization failures also detach.
+  pqrs::dispatcher::extra::dispatcher_client_constructor_exception_guard dispatcher_client_constructor_exception_guard_{*this};
+
 public:
   // Signals (invoked from the dispatcher thread)
 
@@ -53,12 +57,23 @@ protected:
         socket_ready_(false),
         send_invoker_(io_ctx_, asio_helper::time_point::pos_infin()),
         send_deadline_(io_ctx_, asio_helper::time_point::pos_infin()) {
-    io_ctx_thread_ = std::thread([this] {
-      this->io_ctx_.run();
-    });
+    dispatcher_client_constructor_exception_guard_.initialize(
+        [&] {
+          io_ctx_thread_ = std::thread([this] {
+            this->io_ctx_.run();
+          });
+        });
   }
 
   ~base_impl() override {
+    // A derived constructor can fail after this base has started its thread.
+    // In that case the derived destructor never calls terminate_base_impl().
+    if (io_ctx_thread_.joinable()) {
+      work_guard_.reset();
+      io_ctx_.stop();
+      io_ctx_thread_.join();
+    }
+    detach_from_dispatcher();
   }
 
   // We have to terminate asio and pqrs::dispatcher while all instance variables of child class are alive.
