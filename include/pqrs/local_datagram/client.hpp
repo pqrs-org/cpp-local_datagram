@@ -42,7 +42,6 @@ public:
                                server_socket_file_path_(server_socket_file_path),
                                client_socket_file_path_(client_socket_file_path),
                                buffer_size_(buffer_size),
-                               server_socket_file_path_resolver_(nullptr),
                                client_send_entries_(std::make_shared<std::deque<not_null_shared_ptr_t<impl::send_entry>>>()),
                                reconnect_timer_(*this) {
     dispatcher_client_constructor_exception_guard_.initialize(
@@ -254,10 +253,11 @@ private:
   std::optional<std::chrono::milliseconds> next_heartbeat_deadline_;
   std::optional<std::chrono::milliseconds> client_socket_check_interval_;
   std::optional<std::chrono::milliseconds> reconnect_interval_;
-  std::function<std::filesystem::path()> server_socket_file_path_resolver_;
+  std::function<std::filesystem::path()> server_socket_file_path_resolver_{nullptr};
 
   not_null_shared_ptr_t<std::deque<not_null_shared_ptr_t<impl::send_entry>>> client_send_entries_;
   std::shared_ptr<impl::client_impl> client_impl_;
+
   // Construct after potentially throwing members; destruction requires detach.
   dispatcher::extra::timer reconnect_timer_;
 };

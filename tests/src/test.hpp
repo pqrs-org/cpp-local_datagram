@@ -16,8 +16,7 @@ const std::chrono::milliseconds client_socket_check_interval(100);
 class test_server final {
 public:
   test_server(std::weak_ptr<pqrs::dispatcher::dispatcher> weak_dispatcher,
-              std::optional<std::chrono::milliseconds> reconnect_interval) : closed_(false),
-                                                                             received_count_(0) {
+              std::optional<std::chrono::milliseconds> reconnect_interval) {
     auto wait = pqrs::make_thread_wait();
 
     unlink(test_constants::server_socket_file_path.c_str());
@@ -110,8 +109,8 @@ public:
 
 private:
   std::optional<bool> bound_;
-  bool closed_;
-  size_t received_count_;
+  bool closed_{false};
+  size_t received_count_{0};
   std::unique_ptr<pqrs::local_datagram::server> server_;
   std::unordered_map<std::string, int> next_heartbeat_deadline_exceeded_counts_;
   std::string warning_message_;
@@ -121,8 +120,7 @@ class test_client final {
 public:
   test_client(std::weak_ptr<pqrs::dispatcher::dispatcher> weak_dispatcher,
               std::optional<std::chrono::milliseconds> reconnect_interval,
-              bool bidirectional) : closed_(false),
-                                    received_count_(0) {
+              bool bidirectional) {
     auto wait = pqrs::make_thread_wait();
 
     std::optional<std::filesystem::path> client_socket_file_path;
@@ -199,7 +197,7 @@ public:
 
 private:
   std::optional<bool> connected_;
-  bool closed_;
-  size_t received_count_;
+  bool closed_{false};
+  size_t received_count_{0};
   std::unique_ptr<pqrs::local_datagram::client> client_;
 };

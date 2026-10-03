@@ -163,6 +163,7 @@ private:
 
   std::unique_ptr<client_impl> server_check_client_impl_;
   not_null_shared_ptr_t<std::deque<not_null_shared_ptr_t<send_entry>>> server_check_client_send_entries_;
+
   // Construct after potentially throwing members; destruction requires detach.
   dispatcher::extra::timer server_check_timer_;
 };

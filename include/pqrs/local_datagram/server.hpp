@@ -213,6 +213,7 @@ private:
   std::optional<std::chrono::milliseconds> reconnect_interval_;
   not_null_shared_ptr_t<std::deque<not_null_shared_ptr_t<impl::send_entry>>> server_send_entries_;
   std::unique_ptr<impl::server_impl> server_impl_;
+
   // Construct after potentially throwing members; destruction requires detach.
   dispatcher::extra::timer reconnect_timer_;
 };

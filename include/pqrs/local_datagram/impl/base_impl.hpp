@@ -54,7 +54,6 @@ protected:
         mode_(mode),
         send_entries_(send_entries),
         work_guard_(asio::make_work_guard(io_ctx_)),
-        socket_ready_(false),
         send_invoker_(io_ctx_, asio_helper::time_point::pos_infin()),
         send_deadline_(io_ctx_, asio_helper::time_point::pos_infin()) {
     dispatcher_client_constructor_exception_guard_.initialize(
@@ -478,7 +477,7 @@ protected:
   asio::executor_work_guard<asio::io_context::executor_type> work_guard_;
   std::thread io_ctx_thread_;
   std::unique_ptr<asio::local::datagram_protocol::socket> socket_;
-  bool socket_ready_;
+  bool socket_ready_{false};
 
   // Server
   std::filesystem::path bound_path_;

@@ -63,6 +63,7 @@ public:
 
 private:
   not_null_shared_ptr_t<asio::local::datagram_protocol::endpoint> sender_endpoint_;
+
   // Construct after potentially throwing members; destruction requires detach.
   dispatcher::extra::debounced_task task_;
 };

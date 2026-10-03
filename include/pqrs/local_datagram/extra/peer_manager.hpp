@@ -40,9 +40,7 @@ public:
         : client_(weak_dispatcher,
                   peer_socket_file_path,
                   std::nullopt,
-                  buffer_size),
-          connected_(false),
-          verified_(false) {
+                  buffer_size) {
       client_.set_server_check_interval(server_check_interval);
     }
 
@@ -90,8 +88,8 @@ public:
 
   private:
     client client_;
-    bool connected_;
-    bool verified_;
+    bool connected_{false};
+    bool verified_{false};
     std::vector<std::vector<uint8_t>> queue_;
   };
 
